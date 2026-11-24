@@ -80,7 +80,6 @@ step "3/5 Setup procedures: data loader, app deploy, Lab Companion prerequisites
 run_sql setup/11_lab_data_loader.sql
 run_sql setup/04_lab_companion.sql
 run_sql setup/05_wake_schedule.sql
-run_sql setup/15_lab_guide.sql   # the written guide as a Streamlit app (works on every account)
 
 step "4/5 Record the lab settings (the app shows 'Setting up your lab' from now on)"
 LAB_START="${LAB_START:-${EVENT_START_DATETIME:-}}"
@@ -112,6 +111,10 @@ snow sql -c "$CONN" --role HOL_ADMIN --format json -q "USE WAREHOUSE BANKING_WH;
 URL=$(grep -o 'https://[a-z0-9.-]*snowflakecomputing\.app' /tmp/hol_app.log | tail -1)
 [[ -n "$URL" ]] || { echo "FAILED: no Lab Companion URL in /tmp/hol_app.log"; exit 1; }
 printf "[%s UTC] Lab Companion: %s\n" "$(date -u +%H:%M:%S)" "$URL"
+# The guide Streamlit app is only for accounts that can't run the Lab Companion (INSTALL.sql builds it
+# there); remove one left by an earlier provisioning
+snow sql -c "$CONN" --role HOL_ADMIN -q "DROP STREAMLIT IF EXISTS BANKING_HOL.LAB.LAB_GUIDE; DELETE FROM BANKING_HOL.LAB.SETUP_CONFIG WHERE KEY = 'GUIDE'" > /tmp/hol_guide_drop.log 2>&1 \
+  || echo "  (could not remove the guide Streamlit app: see /tmp/hol_guide_drop.log)"
 snow sql -c "$CONN" --role HOL_ADMIN -q "EXECUTE TASK BANKING_HOL.LAB.PROVISION_LAB" > /tmp/hol_start_setup.log 2>&1 \
   && ! grep -q "─ Error" /tmp/hol_start_setup.log \
   || { echo "FAILED: could not start the lab setup (see /tmp/hol_start_setup.log)"; grep -A6 "─ Error" /tmp/hol_start_setup.log | head -10; exit 1; }

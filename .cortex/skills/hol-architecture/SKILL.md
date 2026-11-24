@@ -49,7 +49,7 @@ Then **look at it**: `npx next start -p <free port>` and screenshot `/architectu
 
 Commit on the working branch, refresh the public repo (`git archive` into the public clone, never push private history), then:
 
-- **Lab guide app** (every account): `snow sql -c <connection> -f setup/15_lab_guide.sql`
+- **Lab guide app** (only accounts that can't run the Lab Companion; INSTALL.sql builds it there): `snow sql -c <connection> -f setup/15_lab_guide.sql`
 - **⚠️ STOP:** ask before redeploying the Lab Companion and which connection. Then as `HOL_ADMIN`: `ALTER GIT REPOSITORY BANKING_HOL_SETUP.PUBLIC.HOL_REPO FETCH; CALL BANKING_HOL.LAB.DEPLOY_LAB_COMPANION();`
 
 ## Top-level navigation

@@ -88,13 +88,11 @@ INSERT INTO BANKING_HOL.LAB.SETUP_CONFIG (KEY, VALUE) VALUES
 -- -----------------------------------------------------
 EXECUTE IMMEDIATE FROM @BANKING_HOL_SETUP.PUBLIC.HOL_REPO/branches/main/setup/14_workspace.sql;
 
--- The written lab guide as a Streamlit app: works on every account, including trials
-EXECUTE IMMEDIATE FROM @BANKING_HOL_SETUP.PUBLIC.HOL_REPO/branches/main/setup/15_lab_guide.sql;
-
 -- -----------------------------------------------------
 -- 5. Build the Lab Companion inside Snowflake (2 to 10 minutes the first time)
 --    It runs on Snowflake App Runtime. Where the account can't run it (trial
---    accounts), the deploy's error is recorded and the install carries on.
+--    accounts), the deploy's error is recorded and the written lab guide is
+--    built instead, as a Streamlit app that works on every account.
 -- -----------------------------------------------------
 USE ROLE HOL_ADMIN;
 USE WAREHOUSE BANKING_WH;
@@ -102,11 +100,15 @@ EXECUTE IMMEDIATE $$
 BEGIN
     DELETE FROM BANKING_HOL.LAB.SETUP_CONFIG WHERE KEY = 'APP_SKIPPED';
     CALL BANKING_HOL.LAB.DEPLOY_LAB_COMPANION();
+    -- the guide app is only for accounts without the Lab Companion
+    DROP STREAMLIT IF EXISTS BANKING_HOL.LAB.LAB_GUIDE;
+    DELETE FROM BANKING_HOL.LAB.SETUP_CONFIG WHERE KEY = 'GUIDE';
     RETURN 'Lab Companion deployed';
 EXCEPTION
     WHEN OTHER THEN
         LET reason VARCHAR := LEFT(SQLERRM, 500);
         INSERT INTO BANKING_HOL.LAB.SETUP_CONFIG (KEY, VALUE) VALUES ('APP_SKIPPED', :reason);
+        EXECUTE IMMEDIATE FROM @BANKING_HOL_SETUP.PUBLIC.HOL_REPO/branches/main/setup/15_lab_guide.sql;
         RETURN 'Lab Companion not deployed (this account cannot run Snowflake App Runtime apps): ' || :reason;
 END;
 $$;
