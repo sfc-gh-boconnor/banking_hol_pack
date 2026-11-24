@@ -241,6 +241,8 @@ def targets(session):
     if show(session, "SHOW POSTGRES INSTANCES LIKE 'HOL_PAYMENTS_PG'"):
         out.append(("DE3 mirror PAYMENTS_MIRROR", "CALL SNOWFLAKE.POSTGRES.DROP_MIRROR(mirror_name => 'payments_mirror', drop_target_database => TRUE)"))
         out.append(("POSTGRES INSTANCE HOL_PAYMENTS_PG", "DROP POSTGRES INSTANCE IF EXISTS HOL_PAYMENTS_PG"))
+        # the saved password must not outlive its instance
+        out.append(("SECRET PG_ADMIN_SECRET (cleared)", f"ALTER SECRET {DB}.REALTIME.PG_ADMIN_SECRET SET USERNAME = 'not-set' PASSWORD = 'not-set'"))
     if show(session, "SHOW DATABASES LIKE 'PAYMENTS_MIRROR'"):
         out.append(("DATABASE PAYMENTS_MIRROR", "DROP DATABASE IF EXISTS PAYMENTS_MIRROR"))
     # the lab notebooks in the shared banking-hol-pack Workspace go back to the repo versions (new notebooks attendees

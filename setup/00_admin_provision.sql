@@ -279,10 +279,27 @@ EXCEPTION
     RETURN 'WARNING: SNOWFLAKE.POSTGRES_MIRROR_ADMIN not available yet (DE3 mirror step needs it): ' || SQLERRM;
 END;
 $$;
--- Inbound to Postgres from notebooks and laptops (lab only: open to any IPv4 address)
+-- Inbound to Postgres only from Snowflake: the notebook (and the mirror) connect from Snowflake's
+-- published egress IP ranges for this region, so laptops and the open internet are refused.
+-- Postgres rules can only hold IPv4 ranges, and these ranges are shared by the region's Snowflake
+-- accounts, so the password still matters. Rebuilt on every run (ranges change; expiry in the output).
 CREATE NETWORK RULE IF NOT EXISTS BANKING_HOL.REALTIME.HOL_PG_INGRESS_RULE
-  TYPE = IPV4 MODE = POSTGRES_INGRESS VALUE_LIST = ('0.0.0.0/0')
-  COMMENT = 'DE3: who may connect to the lab Postgres instance';
+  TYPE = IPV4 MODE = POSTGRES_INGRESS VALUE_LIST = ('127.0.0.1/32')
+  COMMENT = 'DE3: Snowflake egress IP ranges allowed to reach the lab Postgres instance';
+EXECUTE IMMEDIATE $$
+DECLARE
+  ranges VARCHAR;
+BEGIN
+  SELECT LISTAGG('''' || value:ipv4_prefix::VARCHAR || '''', ', ') INTO :ranges
+    FROM TABLE(FLATTEN(INPUT => PARSE_JSON(SYSTEM$GET_SNOWFLAKE_EGRESS_IP_RANGES())))
+    WHERE value:ipv4_prefix IS NOT NULL AND value:expires::TIMESTAMP_TZ > CURRENT_TIMESTAMP();
+  IF (ranges IS NULL OR ranges = '') THEN
+    RETURN 'WARNING: no Snowflake egress IP ranges for this region; HOL_PG_INGRESS_RULE left unchanged';
+  END IF;
+  EXECUTE IMMEDIATE 'ALTER NETWORK RULE BANKING_HOL.REALTIME.HOL_PG_INGRESS_RULE SET VALUE_LIST = (' || ranges || ')';
+  RETURN 'HOL_PG_INGRESS_RULE allows Snowflake egress only: ' || ranges;
+END;
+$$;
 CREATE NETWORK POLICY IF NOT EXISTS HOL_PG_POLICY
   ALLOWED_NETWORK_RULE_LIST = ('BANKING_HOL.REALTIME.HOL_PG_INGRESS_RULE')
   COMMENT = 'DE3: attach to HOL_PAYMENTS_PG';
