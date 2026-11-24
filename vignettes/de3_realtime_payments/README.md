@@ -69,7 +69,7 @@ Where: the Lab Companion > **DE3** > **Reveal Postgres connection**, then the no
 ```prompt
 Under heading 2, after my connection cell, add a Python cell named source_table that opens conn = pg.connect(PG_HOST, PG_USER, PG_PASS) and runs pg.create_source_table(conn), printing the row count it returns. Then explain the table it created in Postgres and why it has a primary key.
 ```
-Expect: `0` rows in the new Postgres table `payments.payment_events`. The primary key lets the mirror carry updates and deletes as well as inserts. Keep the password out of anything you share. You can reveal it again any time, for example after a kernel restart. If the Lab Companion says the password wasn't saved, run `pg.reset_password(get_active_session())` and reveal again.
+Expect: `0` rows in the new Postgres table `payments.payment_events`. The primary key lets the mirror carry updates and deletes as well as inserts. Keep the password out of anything you share. You can reveal it again any time, for example after a kernel restart. If the Lab Companion says the password wasn't saved, run `pg.reset_password(get_active_session())` and reveal again. The instance only accepts connections from Snowflake (its network policy allows Snowflake's egress IP ranges), so connect from the notebook: a desktop client such as psql or DBeaver on your laptop will time out.
 
 ### Mirror Postgres into Snowflake
 ```prompt
