@@ -1,0 +1,40 @@
+version: 2
+
+name: LAB_COMPANION
+database: BANKING_HOL
+schema: LAB
+query_warehouse: BANKING_WH
+
+# Lets the browser load exec demo basemap tiles (the ingress CSP follows the EAI's hosts)
+external_access_integrations:
+  - BASEMAP_ACCESS_INTEGRATION
+
+label: "Banking Data Products Lab Companion"
+description: "Guided pathways for the Banking Data Products hands-on lab (payments, client 360, customer voice and branch network), with live Check my work validation and facilitator progress."
+icon: public/brand/snowflake-bug-color-rgb.svg
+
+install:
+  commands:
+    - ["npm", "ci", "--include=dev"]
+
+build:
+  commands:
+    - ["npm", "run", "build"]
+    # For standalone mode
+    - ["cp", "-r", ".next/static", ".next/standalone/.next/static"]
+    - ["cp", "-r", "public", ".next/standalone/public"]
+    # Avoid packaging extra node_modules since standalone includes its own
+    - ["rm", "-rf", "node_modules"]
+
+run:
+  command: ["node", ".next/standalone/server.js"]
+
+ignore:
+  - node_modules
+  - .env*
+  - __pycache__
+  - "*.pyc"
+  - .next
+  - .git
+  - snowflake.log
+  - "*.tsbuildinfo"

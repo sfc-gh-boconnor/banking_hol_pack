@@ -1,0 +1,17 @@
+# Snowflake brand palette, matching the Lab Companion (lab-companion/app/globals.css)
+[theme]
+base = "light"
+primaryColor = "#29B5E8"            # Snowflake Blue
+backgroundColor = "#F4F8FA"
+secondaryBackgroundColor = "#FFFFFF"
+textColor = "#2C3D48"               # Winter
+linkColor = "#11567F"               # Mid Blue
+borderColor = "#DBE3E6"
+showWidgetBorder = true
+baseRadius = "0.5rem"
+font = "Lato, sans-serif"
+headingFont = "Lato, sans-serif"
+
+[theme.sidebar]
+backgroundColor = "#11567F"         # Mid Blue
+textColor = "#FFFFFF"

@@ -1,0 +1,91 @@
+# GOV2: Lineage, audit and trust
+
+| | |
+|---|---|
+| **Persona** | Governance / Risk / Audit |
+| **Time** | ~30 min |
+| **Prerequisites** | C1 only. GOV2 uses a ready-made audit pack in `BANKING_HOL.AUDIT_PACK`, so it doesn't depend on any other module |
+
+## Business question
+> If a source Iceberg table changes, what breaks? And who - human or agent - has been reading client data?
+
+## What you'll build
+- Lineage and access-history queries
+- Business comments on the SLA data product
+- A daily Cortex Code automation `RESTRICTED_COLUMN_WATCH` reporting new reads of restricted columns
+
+## Steps
+### Ask the agent a few questions first
+Where: Snowsight > **AI & ML > Agents > PAYMENTS_AUDIT_AGENT** (the chat on the right)
+Media: gov2_agent_chat.mp4 | AI > Agent Studio > Payments Audit Agent > Preview, then paste the first question
+**Important:** do this step now, at the start of the module. Agent usage takes up to about 45 minutes to reach ACCOUNT_USAGE.
+1. Paste the first question from the card below into the agent chat.
+2. Ask "What is the success rate by payment scheme?"
+3. Ask "How many client accounts does each relationship manager look after?"
+The queries you ask here are what you'll audit in "What are our agents doing?" later.
+GOV2 audits a ready-made **audit pack** in `BANKING_HOL.AUDIT_PACK`, built on the Iceberg sources:
+- a daily SLA data product (`PAYMENT_SLA_DAILY`)
+- a client accounts view with restricted columns (`CLIENT_ACCOUNTS`)
+- a semantic view (`SV_PAYMENTS_AUDIT`)
+- an agent (`PAYMENTS_AUDIT_AGENT`)
+The pack is separate from everything the other modules build, so you can still do those afterwards.
+Paste: the **PAYMENTS_AUDIT_AGENT** chat (not CoCo)
+```prompt
+Which payment scheme had the most SLA breach days?
+```
+Expect: an answer to each question, with the SQL the agent ran over SV_PAYMENTS_AUDIT. Carry on with the next steps while the usage data arrives.
+
+### Impact analysis on the Iceberg source
+Where: the **CoCo** tab (Home/CoCo toggle at the top of the left nav > **New session**); also Snowsight > **Catalog > BANKING_HOL > RAW_DATA > PAYMENTS > Lineage**
+Media: gov2_lineage.mp4 | Catalog > Explorer > BANKING_HOL > RAW_DATA > Tables > PAYMENTS > Lineage
+```prompt
+If I drop the column PROCESSING_TIME_MS from BANKING_HOL.RAW_DATA.PAYMENTS, which downstream objects and agents break? Use SNOWFLAKE.CORE.GET_LINEAGE downstream to 3 levels, and explain any objects shown as ***.***.***.
+```
+Expect: the audit pack chain `PAYMENT_SLA_DAILY` > `SV_PAYMENTS_AUDIT` > `PAYMENTS_AUDIT_AGENT`, so the agent breaks, plus any staging views, marts and dynamic tables you built in other modules. Masked rows are objects your role can't see: lineage never leaks them.
+
+### Where does the data product come from?
+```prompt
+Show the upstream lineage of the agent BANKING_HOL.AUDIT_PACK.PAYMENTS_AUDIT_AGENT to 3 levels (use OBJECT_DOMAIN CORTEX_AGENT), so I can see which semantic view, tables and Iceberg sources its answers come from.
+```
+Expect: the path back from the agent through `SV_PAYMENTS_AUDIT` and `PAYMENT_SLA_DAILY` to the Iceberg tables in `RAW_DATA`
+
+### Who read restricted columns?
+```prompt
+From SNOWFLAKE.ACCOUNT_USAGE.ACCESS_HISTORY, show who accessed the IBAN, ACCOUNT_NUMBER or SORT_CODE columns of any BANKING_HOL object in the last day, with time, user and object.
+```
+Expect: recent reads, including your GOV1 queries if you did GOV1. To be sure there's something to find, first run `SELECT * FROM BANKING_HOL.AUDIT_PACK.CLIENT_ACCOUNTS LIMIT 5`. ACCOUNT_USAGE can lag by up to about 3 hours, so this may be empty early in the day.
+
+### Turn the access check into a daily automation
+Where: the **CoCo** tab, in the same session as the step above
+Media: gov2_automations.mp4 | Your automations live under CoCo > Automations
+**Autonomous Data Engineering:** autonomous agents.
+- A Cortex Code automation runs a prompt on a schedule, unattended. It's GA in the CLI and public preview in Desktop.
+- Cortex Code Cloud Agents take the same idea to longer, background tasks.
+1. Cortex Code offers to run the access-history query as a daily **Cortex Code automation**. Accept the offer, or ask for it with this prompt:
+A Cortex Code automation is a scheduled, unattended Cortex Code run in a Snowflake-managed sandbox.
+```prompt
+Set up a daily Cortex Code automation called RESTRICTED_COLUMN_WATCH that runs at 08:00 Europe/London. Each run: query SNOWFLAKE.ACCOUNT_USAGE.ACCESS_HISTORY for reads of the IBAN, ACCOUNT_NUMBER or SORT_CODE columns of any BANKING_HOL object in the last 24 hours, and report who read them, when, and from which object. It runs unattended, so it must not ask questions and must stay read-only. Create it paused, run it once now so I can see the report, then start the schedule.
+```
+Expect: Cortex Code summarises the automation (name, schedule, read-only), creates it paused, runs it once and shows the report, then asks before starting the schedule. See it under **Automations** in the CoCo side nav (below **New session**). Each run uses your default role (`HOL_PARTICIPANT`), so it sees exactly what you see: masked values stay masked. Your lab login has no email address, so there's no emailed run report; read the report in the run's thread instead.
+Check: gov2_automation
+
+### What are our agents doing?
+Where: the **CoCo** tab (Home/CoCo toggle at the top of the left nav > **New session**); also Snowsight > **AI & ML > Agents > PAYMENTS_AUDIT_AGENT > Monitoring**
+Media: gov2_agent_monitoring.mp4 | AI > Agent Studio > Payments Audit Agent > Observability
+```prompt
+From SNOWFLAKE.ACCOUNT_USAGE.QUERY_HISTORY, show queries in the last day against BANKING_HOL that used SEMANTIC_VIEW, with user, role, start time, duration and a preview of the SQL.
+```
+Expect: the queries your agents and Cortex Analyst generated, including the three questions you asked at the start, attributed to the user who asked. If they aren't there yet, usage can take up to about 45 minutes to appear: carry on with the last step and come back to this one.
+
+### Document the data product
+```prompt
+Add a table comment to BANKING_HOL.AUDIT_PACK.PAYMENT_SLA_DAILY that starts "Daily SLA compliance per payment scheme. Owner: Payments Operations." and states its grain (day x scheme) and source, plus a column comment on SLA_STATUS explaining COMPLIANT, AT RISK and BREACH. Then produce a one-page data product card for it: owner, grain, lineage, quality checks, sensitivity tags and consumers.
+```
+Expect: the comments saved, so humans and AI find the right table, and a data product card, which you see when you switch back to **Home** (Home/CoCo toggle)
+Check: gov2_documented
+
+## Check your work
+Downstream lineage from `RAW_DATA.PAYMENTS` reaches `PAYMENTS_AUDIT_AGENT`, the agent's questions show in query history, and `PAYMENT_SLA_DAILY` is documented.
+
+## In your bank
+ACCOUNT_USAGE views have up to ~3 hours latency - run history queries at the end of the session.

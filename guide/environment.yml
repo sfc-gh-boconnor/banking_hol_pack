@@ -1,0 +1,6 @@
+# Used if the account runs Streamlit on the warehouse runtime (pyproject.toml is used on the container runtime)
+name: sf_env
+channels:
+  - snowflake
+dependencies:
+  - streamlit

@@ -1,0 +1,160 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+/* dark: utilities follow the .dark class set by components/theme-provider.tsx */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+ * THEMING
+ * -------
+ * Brand colors are defined as CSS variables below.
+ * To change the color scheme, edit the values in :root.
+ * Light/dark mode is handled automatically via the variable overrides below.
+ */
+
+/* Snowflake brand typefaces (https://www.snowflake.com/brand-guidelines/):
+   Texta for headlines and buttons, Lato for body text. */
+@font-face { font-family: "Texta"; src: url("/fonts/Texta-Bold.otf") format("opentype"); font-weight: 700; font-display: swap; }
+@font-face { font-family: "Texta"; src: url("/fonts/Texta-Heavy.otf") format("opentype"); font-weight: 800; font-display: swap; }
+@font-face { font-family: "Texta"; src: url("/fonts/Texta-Black.otf") format("opentype"); font-weight: 900; font-display: swap; }
+@font-face { font-family: "Lato"; src: url("/fonts/Lato-Regular.ttf") format("truetype"); font-weight: 400; font-display: swap; }
+
+@layer base {
+  :root {
+    /* Snowflake brand palette */
+    --sf-blue: #29b5e8;           /* Snowflake Blue, core brand */
+    --sf-mid-blue: #11567f;       /* Mid Blue, contrasting */
+    --sf-midnight: #000000;       /* Midnight */
+    --sf-star-blue: #71d3dc;      /* accents only */
+    --sf-orange: #ff9f36;
+    --sf-purple: #7d44cf;
+    --sf-rose: #d45b90;
+    --sf-windy-city: #8a999e;     /* neutral */
+    --sf-iceberg: #003545;
+    --sf-winter: #24323d;
+
+    /* Brand tokens */
+    --brand-primary: var(--sf-blue);
+    --brand-primary-foreground: #ffffff;
+    --brand-nav-bg: var(--sf-blue);
+    --brand-nav-fg: #ffffff;
+
+    --background: #f4f8fa;
+    --foreground: var(--sf-winter);
+    --card: #ffffff;
+    --card-foreground: var(--sf-winter);
+    --popover: #ffffff;
+    --popover-foreground: var(--sf-winter);
+
+    /* Primary wired to brand color */
+    --primary: var(--brand-primary);
+    --primary-foreground: var(--brand-primary-foreground);
+
+    --secondary: #e6f5fb;         /* Snowflake Blue tint */
+    --secondary-foreground: var(--sf-mid-blue);
+    --muted: #eef2f4;
+    --muted-foreground: #5f6e73;  /* Windy City, darkened for text contrast */
+    --accent: #e6f5fb;
+    --accent-foreground: var(--sf-mid-blue);
+    --destructive: oklch(0.577 0.245 27.325);
+    --destructive-foreground: #ffffff;
+    --border: #dbe3e6;
+    --input: #dbe3e6;
+    --ring: var(--brand-primary);
+    --radius: 0.625rem;
+
+    /* Status colors */
+    --success: #059669;           /* emerald-600 */
+    --warning: #d97706;           /* amber-600 */
+
+    /* Chart palette from the Snowflake primary and secondary colours */
+    --chart-1: var(--sf-blue);
+    --chart-2: var(--sf-mid-blue);
+    --chart-3: var(--sf-orange);
+    --chart-4: var(--sf-purple);
+    --chart-5: var(--sf-rose);
+    --chart-grid: #dbe3e6;
+    --chart-axis: #5f6e73;
+  }
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --font-sans: "Lato", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-heading: "Texta", "Lato", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+@layer base {
+  .dark {
+    /* Dark mode on Midnight / Iceberg / Winter */
+    --background: var(--sf-midnight);
+    --foreground: #f4f8fa;
+    --card: #0d1c24;
+    --card-foreground: #f4f8fa;
+    --popover: var(--sf-winter);
+    --popover-foreground: #f4f8fa;
+    --secondary: var(--sf-iceberg);
+    --secondary-foreground: #f4f8fa;
+    --muted: #16252e;
+    --muted-foreground: var(--sf-windy-city);
+    --accent: var(--sf-iceberg);
+    --accent-foreground: #f4f8fa;
+    --border: #2c3d48;
+    --input: #2c3d48;
+    --chart-2: var(--sf-star-blue);
+    --success: #34d399;          /* emerald-400 */
+    --warning: #fbbf24;          /* amber-400 */
+    --chart-grid: #2c3d48;
+    --chart-axis: var(--sf-windy-city);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground font-sans;
+    -webkit-font-smoothing: antialiased;
+  }
+  /* Snowflake headline style: Texta Black, all caps */
+  h1, h2, h3 {
+    font-family: var(--font-heading);
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.01em;
+  }
+  button:not(:disabled), [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+}

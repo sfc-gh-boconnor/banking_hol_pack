@@ -1,0 +1,14 @@
+/** App title — displayed in the nav header and browser tab */
+export const APP_TITLE = "Banking Data Products Lab Companion"
+
+/** Path to the logo in /public (used in the header and as favicon) */
+export const LOGO_SRC = "/brand/snowflake-bug-color-rgb.svg"
+
+/** Pages listed under "Go to" in the ⌘K command palette. */
+export const NAV_ITEMS: { label: string; href: string }[] = [
+  { label: "Pathways and modules", href: "/" },
+  { label: "Data map", href: "/data" },
+  { label: "C0 Tour the data estate", href: "/module/C0" },
+  { label: "C1 Explore the Iceberg data product", href: "/module/C1" },
+  { label: "Facilitator progress", href: "/facilitator" },
+]

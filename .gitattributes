@@ -1,0 +1,3 @@
+# Internal working files: never in the public banking_hol_pack (git archive skips these)
+.snowflake/ export-ignore
+tester-feedback/ export-ignore

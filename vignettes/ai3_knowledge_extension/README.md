@@ -1,0 +1,54 @@
+# AI3: Marketplace knowledge extension
+
+| | |
+|---|---|
+| **Persona** | AI Builder |
+| **Time** | ~30 min |
+| **Prerequisites** | Facilitator setup 00 (installs `SNOWFLAKE_DOCS_CKE`), DA1 |
+
+## Business question
+> Agents need trusted unstructured knowledge, but internal (PII) data cannot be vectorised yet. What can we do?
+
+## What you'll build
+- Agent `SNOWFLAKE_INTELLIGENCE.AGENTS.PAYMENTS_PLATFORM_COPILOT` combining `SV_CLIENT_360` with a provider-hosted search service
+
+## Steps
+### See what came from the Marketplace
+Where: Snowsight > **Data Products > Marketplace**, search "Cortex Knowledge Extension"; then the Cortex Code sidebar
+Media: ai3_marketplace.mp4 | Marketplace > Snowflake Marketplace > Listings > search Cortex Knowledge Extension
+1. Browse the knowledge extension listings. Finance publishers are there too.
+2. Open the Cortex Code sidebar in the banking-hol-pack Workspace and paste this prompt.
+```prompt
+Show the Cortex Search services in database SNOWFLAKE_DOCS_CKE and explain what a Cortex Knowledge Extension is: who built and hosts it, what we can see of its source data, and how we pay for it.
+```
+Expect: the `CKE_SNOWFLAKE_DOCS_SERVICE` search service. You didn't build it and can't see its source table.
+Check: ai3_extension
+
+### Query it directly
+```prompt
+Use SNOWFLAKE.CORTEX.SEARCH_PREVIEW on SNOWFLAKE_DOCS_CKE.SHARED.CKE_SNOWFLAKE_DOCS_SERVICE to answer "How do I apply a masking policy to a column?", returning DOCUMENT_TITLE, SOURCE_URL and the first 200 characters of CHUNK for the top 3 results.
+```
+Expect: three documentation excerpts with their URLs
+
+### Create an agent that uses both
+Where: banking-hol-pack Workspace > **+ > Agent** > **Create with CoCo** (recommended)
+Media: ai3_create_agent.mp4 | + Add new > Agent > name it payments_platform_copilot > Create with CoCo > paste the brief
+1. Rename the new agent file to `payments_platform_copilot` straight away.
+2. Paste this brief into Cortex Code.
+```prompt
+Create a Cortex Agent SNOWFLAKE_INTELLIGENCE.AGENTS.PAYMENTS_PLATFORM_COPILOT with display name "Payments Platform Copilot". Tools: a Cortex Analyst tool Client360 on BANKING_HOL.ANALYTICS.SV_CLIENT_360 (warehouse BANKING_WH) for client, alert and sentiment data, and a Cortex Search tool PlatformDocs on SNOWFLAKE_DOCS_CKE.SHARED.CKE_SNOWFLAKE_DOCS_SERVICE (max 4 results, title column DOCUMENT_TITLE, id column SOURCE_URL) for how-to questions about Snowflake. Instructions: use Client360 for data questions, PlatformDocs for how-to questions, both when a question needs both, and cite documentation URLs. Deploy it.
+```
+Expect: `PAYMENTS_PLATFORM_COPILOT` deployed in `SNOWFLAKE_INTELLIGENCE.AGENTS`
+Check: ai3_agent
+
+### Ask a question that needs both
+Where: Snowsight > **AI & ML > CoWork** > **Payments Platform Copilot**
+Media: ai3_cowork.mp4 | Snowflake CoWork > pick Payments Platform Copilot > ask the question
+1. Ask "Which 3 clients have the most open critical alerts, and how could I build a dynamic table to keep that list up to date?"
+Expect: the agent calls both `Client360` and `PlatformDocs`, names three clients and cites documentation URLs
+
+## Check your work
+The agent calls both `Client360` and `PlatformDocs` and cites documentation URLs.
+
+## In your bank
+Many banks haven't approved Cortex Search over internal data. Knowledge extensions are built and hosted by the provider; no bank data is indexed. Finance publishers (e.g. Investopedia, FactSet) offer extensions too - personalised listings must be requested by the account admin.

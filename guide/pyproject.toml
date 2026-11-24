@@ -1,0 +1,8 @@
+[project]
+name = "banking-hol-lab-guide"
+version = "1.0.0"
+description = "The Banking HOL written lab guide inside Snowflake"
+requires-python = ">=3.11"
+# No packages: Streamlit is already in the container runtime, and listing any package would
+# need an external access integration to PyPI, which trial accounts don't have.
+dependencies = []
