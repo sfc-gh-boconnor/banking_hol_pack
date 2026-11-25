@@ -186,15 +186,15 @@ AS
 $$
 DB = "BANKING_HOL"
 # schemas attendees build in; everything else in BANKING_HOL is provisioned and left alone
-SCHEMAS = ["ANALYTICS", "AGENTS", "APPS", "GOVERNANCE", "ML", "REALTIME", "SEARCH_LAB", "PUBLIC"]
+SCHEMAS = ["ANALYTICS", "AGENTS", "APPS", "GOVERNANCE", "ML", "REALTIME", "SEARCH_LAB", "SPARK_LAB", "PUBLIC"]
 # provisioned objects that live in those schemas (network rules and secrets are never listed, so never dropped)
-KEEP = {"ANALYTICS.BANKING_DBT", "ML.JOB_STAGE"}
+KEEP = {"ANALYTICS.BANKING_DBT", "ML.JOB_STAGE", "SPARK_LAB.PAYMENT_STATUS_UPDATES"}
 # what an attendee can build, dependants first: (SHOW noun, DROP noun, needs an argument signature)
 KINDS = [("TASKS", "TASK", False), ("ALERTS", "ALERT", False), ("AGENTS", "AGENT", False), ("MCP SERVERS", "MCP SERVER", False),
          ("STREAMLITS", "STREAMLIT", False), ("NOTEBOOKS", "NOTEBOOK", False),
          ("CORTEX SEARCH SERVICES", "CORTEX SEARCH SERVICE", False), ("SEMANTIC VIEWS", "SEMANTIC VIEW", False),
          ("DYNAMIC TABLES", "DYNAMIC TABLE", False), ("VIEWS", "VIEW", False), ("ICEBERG TABLES", "ICEBERG TABLE", False),
-         ("TABLES", "TABLE", False), ("MODELS", "MODEL", False), ("STREAMS", "STREAM", False),
+         ("TABLES", "TABLE", False), ("MODELS", "MODEL", False), ("EXPERIMENTS", "EXPERIMENT", False), ("STREAMS", "STREAM", False),
          ("USER FUNCTIONS", "FUNCTION", True), ("USER PROCEDURES", "PROCEDURE", True), ("STAGES", "STAGE", False),
          ("DBT PROJECTS", "DBT PROJECT", False), ("MASKING POLICIES", "MASKING POLICY", False),
          ("ROW ACCESS POLICIES", "ROW ACCESS POLICY", False), ("TAGS", "TAG", False)]
@@ -220,6 +220,14 @@ def show(session, sql):
 
 def targets(session):
     out = []
+    # tag-based masking (GOV1): a policy set on a tag can't be dropped, nor the tag, until it's unset
+    for schema in SCHEMAS:
+        for t in show(session, f"SHOW TAGS IN SCHEMA {DB}.{schema}"):
+            tag = f"{DB}.{q(schema)}.{q(t['name'])}"
+            for p in show(session, f"SELECT POLICY_DB, POLICY_SCHEMA, POLICY_NAME FROM TABLE({DB}.INFORMATION_SCHEMA.POLICY_REFERENCES("
+                                   f"REF_ENTITY_NAME => '{tag.replace(chr(39), chr(39) * 2)}', REF_ENTITY_DOMAIN => 'TAG'))"):
+                pol = f"{q(p['POLICY_DB'])}.{q(p['POLICY_SCHEMA'])}.{q(p['POLICY_NAME'])}"
+                out.append((f"Unset {p['POLICY_NAME']} from TAG {schema}.{t['name']}", f"ALTER TAG {tag} UNSET MASKING POLICY {pol}"))
     for schema in SCHEMAS:
         for noun, drop, signed in KINDS:
             for r in show(session, f"SHOW {noun} IN SCHEMA {DB}.{schema}"):
@@ -245,6 +253,12 @@ def targets(session):
         out.append(("SECRET PG_ADMIN_SECRET (cleared)", f"ALTER SECRET {DB}.REALTIME.PG_ADMIN_SECRET SET USERNAME = 'not-set' PASSWORD = 'not-set'"))
     if show(session, "SHOW DATABASES LIKE 'PAYMENTS_MIRROR'"):
         out.append(("DATABASE PAYMENTS_MIRROR", "DROP DATABASE IF EXISTS PAYMENTS_MIRROR"))
+    # GOV2: the comments attendees add to the provisioned audit pack table
+    if show(session, f"SHOW TABLES LIKE 'PAYMENT_SLA_DAILY' IN SCHEMA {DB}.AUDIT_PACK"):
+        out.append(("GOV2 comments on AUDIT_PACK.PAYMENT_SLA_DAILY",
+                    f"ALTER TABLE {DB}.AUDIT_PACK.PAYMENT_SLA_DAILY UNSET COMMENT"))
+        out.append(("GOV2 column comment on AUDIT_PACK.PAYMENT_SLA_DAILY.SLA_STATUS",
+                    f"ALTER TABLE {DB}.AUDIT_PACK.PAYMENT_SLA_DAILY ALTER COLUMN SLA_STATUS UNSET COMMENT"))
     # the lab notebooks in the shared banking-hol-pack Workspace go back to the repo versions (new notebooks attendees
     # added there are left; personal My Workspace copies aren't reachable)
     cfg = show(session, f"SELECT VALUE FROM {DB}.LAB.SETUP_CONFIG WHERE KEY = 'WORKSPACE'")
