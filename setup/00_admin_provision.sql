@@ -388,4 +388,60 @@ CALL SYSTEM$ACCEPT_LEGAL_TERMS('DATA_EXCHANGE_LISTING', 'GZSTZ67BY9OQ4');
 CREATE DATABASE IF NOT EXISTS SNOWFLAKE_DOCS_CKE FROM LISTING 'GZSTZ67BY9OQ4';
 GRANT IMPORTED PRIVILEGES ON DATABASE SNOWFLAKE_DOCS_CKE TO ROLE HOL_PARTICIPANT;
 
+-- -----------------------------------------------------
+-- 0.6 DataOps passwordless events (single sign-on through DataOps.live)
+-- The SSO login creates its own user when the attendee registers, after this setup
+-- has run: a 64-character hex name, no password, default role ACCOUNTADMIN. A task
+-- gives that user the lab defaults (first name Attendee, HOL_PARTICIPANT, BANKING_WH),
+-- then suspends itself. Only switched on where DataOps' Authentik integration exists,
+-- so standalone installs and password events are untouched.
+-- -----------------------------------------------------
+CREATE OR REPLACE PROCEDURE BANKING_HOL.LAB.ADOPT_SSO_ATTENDEES()
+  RETURNS VARCHAR LANGUAGE PYTHON RUNTIME_VERSION = '3.11'
+  PACKAGES = ('snowflake-snowpark-python') HANDLER = 'run'
+  COMMENT = 'DataOps passwordless events: give SSO-created attendee users the lab defaults'
+  EXECUTE AS OWNER
+AS $$
+import re
+
+def q(name):
+    return '"' + name.replace('"', '""') + '"'
+
+def run(session):
+    if not session.sql("SHOW SECURITY INTEGRATIONS LIKE 'AUTHENTIK%'").collect():
+        return "no DataOps SSO integration: nothing to do"
+    done, ready = [], 0
+    for r in session.sql("SHOW USERS").collect():
+        u = r.as_dict()
+        name = u["name"]
+        if not re.fullmatch(r"[0-9a-f]{64}", name) or str(u.get("has_password")).lower() == "true":
+            continue
+        if u.get("default_role") == "HOL_PARTICIPANT" and u.get("first_name") == "Attendee":
+            ready += 1
+            continue
+        session.sql(f"GRANT ROLE HOL_PARTICIPANT TO USER {q(name)}").collect()
+        session.sql(f"""ALTER USER {q(name)} SET FIRST_NAME = 'Attendee', DEFAULT_ROLE = HOL_PARTICIPANT,
+            DEFAULT_WAREHOUSE = BANKING_WH, DEFAULT_NAMESPACE = BANKING_HOL, DEFAULT_SECONDARY_ROLES = ()""").collect()
+        done.append(name[:8])
+    if done or ready:
+        # one attendee per DataOps account: nothing left to watch for
+        session.sql("ALTER TASK IF EXISTS BANKING_HOL.LAB.ADOPT_SSO_ATTENDEES_TASK SUSPEND").collect()
+    return ("adopted " + ", ".join(done)) if done else "no new SSO attendees"
+$$;
+CREATE OR REPLACE TASK BANKING_HOL.LAB.ADOPT_SSO_ATTENDEES_TASK
+  SCHEDULE = '2 MINUTE'
+  USER_TASK_MANAGED_INITIAL_WAREHOUSE_SIZE = 'XSMALL'
+  COMMENT = 'DataOps passwordless events: set up the attendee SSO user once they register'
+  AS CALL BANKING_HOL.LAB.ADOPT_SSO_ATTENDEES();
+EXECUTE IMMEDIATE $$
+BEGIN
+  SHOW SECURITY INTEGRATIONS LIKE 'AUTHENTIK%';
+  IF ((SELECT COUNT(*) FROM TABLE(RESULT_SCAN(LAST_QUERY_ID()))) > 0) THEN
+    ALTER TASK BANKING_HOL.LAB.ADOPT_SSO_ATTENDEES_TASK RESUME;
+    RETURN 'DataOps SSO found: ADOPT_SSO_ATTENDEES_TASK running until the attendee signs in';
+  END IF;
+  RETURN 'No DataOps SSO integration: ADOPT_SSO_ATTENDEES_TASK left suspended';
+END;
+$$;
+
 SELECT 'Setup 00 complete - now run 01_seed_synthetic_data.sql as HOL_ADMIN' AS STATUS;

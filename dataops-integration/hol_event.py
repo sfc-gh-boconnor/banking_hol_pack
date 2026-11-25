@@ -148,6 +148,8 @@ def cmd_create(args):
         body["snowflake_account_region_group"] = args.region
     if args.domains:
         body["allowed_email_domains"] = args.domains
+    if args.passwordless:
+        body["passwordless"] = True
     print(json.dumps({k: v for k, v in body.items() if k != "instructions"}, indent=1))
     if args.dry_run:
         return
@@ -207,6 +209,7 @@ def main():
     c.add_argument("--decommission", help="default: 2 days after --end")
     c.add_argument("--region", help=f"default {DEFAULTS['snowflake_account_region_group']}")
     c.add_argument("--domains", nargs="*", help="allowed attendee email domains")
+    c.add_argument("--passwordless", action="store_true", help="DataOps passwordless event (only settable at creation)")
     c.add_argument("--wait", action="store_true", help="wait until every account is ready")
     c.add_argument("--dry-run", action="store_true")
     for name in ("status", "instructions"):
