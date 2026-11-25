@@ -18,7 +18,7 @@ PRE="USE ROLE HOL_PARTICIPANT; USE SECONDARY ROLES NONE; USE WAREHOUSE BANKING_W
 files_for() {
   case "$1" in
     CORE) echo "setup/catchup/core_analytics.sql" ;;
-    SV) echo "setup/catchup/semantic_view_and_agent.sql" ;;
+    C360) echo "setup/catchup/client_360.sql" ;;
     DA0) echo "vignettes/da0_interactive_report/da0_report_totals.sql" ;;
     DS1) echo "setup/catchup/ds1_model.sql vignettes/ds1_attrition_model/ds1.sql" ;;
     DS4) echo "setup/catchup/ds4_predictions.sql vignettes/ds4_customer_value/ds4.sql" ;;

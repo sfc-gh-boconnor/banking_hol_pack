@@ -67,20 +67,23 @@ Expect: a short list - three distinct churn statements (reviewing other provider
 
 ### Chart sentiment by sector
 ```prompt
-Add a SQL cell named sector_trend with one row per complete month and customer sector from BANKING_HOL.ANALYTICS.FEEDBACK_ENRICHED: MONTH, CUSTOMER_SECTOR, AVG_SENTIMENT and FEEDBACK_COUNT, excluding the current partial month. Then add a Python cell that plots sector_trend as an altair line chart (MONTH on x, AVG_SENTIMENT on y, one line per CUSTOMER_SECTOR, tooltip with the count). Run both and tell me which sectors are getting worse.
+Add a SQL cell named sector_trend with one row per complete month and customer sector from BANKING_HOL.ANALYTICS.FEEDBACK_ENRICHED: MONTH, CUSTOMER_SECTOR, AVG_SENTIMENT and FEEDBACK_COUNT, excluding the current partial month. Run it and tell me which sectors are getting worse.
 ```
-Expect: a line chart under the Python cell, one line per sector. Logistics falls clearly over the last four months (the same clients who talk about leaving), while Pharmaceuticals improves; other sectors move around without a trend. Hover over a point to see its feedback count.
+Expect: a result table with one row per month and sector
+
+Now chart it with the built-in chart tool, no Python needed: under the `sector_trend` result select **Chart**, set **Chart type** to **Line chart**, **X axis** to **MONTH** (sort ascending), **Y axis** to **AVG_SENTIMENT**, and group by **CUSTOMER_SECTOR**. Logistics falls clearly over the last four months (the same clients who talk about leaving), while Pharmaceuticals improves; other sectors move around without a trend.
+**Tip:** the result panel also has a **Quick insights** button that summarises a result in the UI. Try it on `sector_trend`.
 
 ### Summarise complaint themes per RM
 ```prompt
-Add a SQL cell named rm_themes that creates the table BANKING_HOL.ANALYTICS.RM_FEEDBACK_THEMES with one row per RM_NAME from the NEGATIVE rows of FEEDBACK_ENRICHED: NEGATIVE_FEEDBACK (count) and TOP_THEMES using AI_AGG with the instruction "You are briefing a corporate banking relationship manager. List the top 3 recurring complaint themes in this client feedback, each with a one-line recommended action. Be concise." Run it and show the results.
+Add a SQL cell named rm_themes that creates the table BANKING_HOL.ANALYTICS.RM_FEEDBACK_THEMES with one row per RM_NAME from the NEGATIVE rows of FEEDBACK_ENRICHED: NEGATIVE_FEEDBACK (count) and TOP_THEMES using AI_AGG with the instruction "You are briefing a corporate banking relationship manager. List the top 3 recurring complaint themes in this client feedback, each with a one-line recommended action. Be concise." Run it, then add a cell that selects from RM_FEEDBACK_THEMES and shows the results.
 ```
-Expect: one row per RM with three themes and actions
+Expect: the table is created (the first cell only reports success); the second cell shows one row per RM with three themes and actions
 Check: da2_rm_themes
 
 ### Draft a client reply
 ```prompt
-Add a SQL cell named draft_reply that uses AI_COMPLETE to draft a short, professional reply from a UK corporate bank to the most negative item in FEEDBACK_ENRICHED: acknowledge the issue, avoid admitting liability and offer a follow-up call. Run it.
+Add a SQL cell named draft_reply that uses AI_COMPLETE to draft a short, professional reply from a UK corporate bank to the most negative item in FEEDBACK_ENRICHED: acknowledge the issue, avoid admitting liability and offer a follow-up call. Run it, then print the draft reply as plain text under the cell so it is easy to read.
 ```
 Expect: a client-ready draft for a human to review. The notebook is now a complete, re-runnable analysis you could share or schedule.
 

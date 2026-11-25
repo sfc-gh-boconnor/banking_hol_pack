@@ -30,7 +30,6 @@ Create a semantic view BANKING_HOL.ANALYTICS.SV_CLIENT_360 with four logical tab
 ```
 Expect: `SV_CLIENT_360` exists. Keep the logical names `clients`, `payments`, `rm_name` and `payment_volume`: the check queries them.
 Check: da1_semantic_view
-**Tip:** compare with the worked example `SV_PAYMENTS` if you want a pattern to follow.
 
 ### Query it with SQL - no joins to remember
 ```prompt

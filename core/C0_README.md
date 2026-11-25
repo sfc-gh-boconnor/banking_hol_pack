@@ -34,7 +34,7 @@ Expect: the Cortex Code screen with a **How can I help?** box
 Give me a tour of the BANKING_HOL database. For the RAW_DATA, RETAIL, ANALYTICS and AUDIT_PACK schemas, list every table with its row count and say whether it is Iceberg. Group them into data products: corporate payments, retail banking (the RB_ tables), branch network, analytics and governance.
 ```
 **Tip:** the **Data map** page of this app (top right) shows the same estate as a picture.
-Expect: about 35 tables in five data products: nine corporate payments Iceberg tables (PAYMENTS has 50,000 rows), seven RB_ retail Iceberg tables (20,000 customers, about 1.3 million transactions), 57 branches with ATMs and drive times, and analytics and governance tables that fill in as you build
+Expect: about 33 tables and 1 view in five data products: nine corporate payments Iceberg tables (PAYMENTS has 50,000 rows), seven RB_ retail Iceberg tables (20,000 customers, about 1.3 million transactions), 57 branches with ATMs and drive times, and analytics and governance tables that fill in as you build
 
 ### How does it fit together?
 ```prompt

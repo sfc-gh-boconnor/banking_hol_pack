@@ -35,11 +35,10 @@ Expect: your user, `HOL_PARTICIPANT`, `BANKING_HOL` and `SPARK_LAB` printed. The
 
 ### Start a Spark session
 Where: the Cortex Code sidebar, with `de4_spark_on_snowflake` open
-Media: de4_spark_sessions.mp4 | Monitoring > Spark > Select warehouse BANKING_WH > Spark Sessions
 ```prompt
 Explain the spark_session cell in de4_spark_on_snowflake: what Snowpark Connect for Spark is, what runs where when I call a DataFrame action, and where the app name appears in Snowsight. Then run it.
 ```
-Expect: a Spark version and your session name, `de4_<your user>`, printed in a few seconds. In **Monitoring > Spark > Spark Sessions**, the session is listed by that name with you as the owner.
+Expect: a Spark version and your session name, `de4_<your user>`, printed in a few seconds. Spark Monitoring in the Snowsight UI comes in the last step; if you opened it earlier, the session is listed there by that name with you as the owner.
 Check: de4_session
 
 ### Explore the feed with PySpark
@@ -56,7 +55,7 @@ Expect: 60 rows quarantined, 20 for each reason, `PAYMENTS_CURRENT` with 50,000 
 Check: de4_silver
 
 ### Run it as a nightly batch job
-Media: de4_batch_trace.mp4 | Monitoring > Spark > Batch Jobs > payments_nightly > Telemetry (one span per DataFrame action)
+Media: de4_batch_trace.mp4 | (what Monitoring shows after this step) Monitoring > Spark > Batch Jobs > payments_nightly > Telemetry (one span per DataFrame action)
 ```prompt
 Run the batch_job, reconciliation and gold cells in de4_spark_on_snowflake and explain what EXECUTE CODE BUNDLE did. Then tell me what to look at for the payments_nightly run in Monitoring > Spark > Batch Jobs, including the Trace tab.
 ```
@@ -70,7 +69,7 @@ Run the schedule cell in de4_spark_on_snowflake and explain the task: when it ru
 Expect: the task created and resumed, to run at 02:00 London time. The scheduler is Snowflake itself: no Airflow or cluster scheduler to run.
 
 ### Break it and find out why
-Media: de4_broken_logs.mp4 | Monitoring > Spark > Batch Jobs > payments_nightly_broken (Failed) > Telemetry
+Media: de4_broken_logs.mp4 | (what Monitoring shows after this step) Monitoring > Spark > Batch Jobs > payments_nightly_broken (Failed) > Telemetry
 ```prompt
 The broken_run cell in de4_spark_on_snowflake failed. Find out why from Snowflake: query SNOWFLAKE.SNOWPARK_CONNECT.GET_SPARK_APPLICATION_HISTORY for my latest failed run, then its ERROR logs in SNOWFLAKE.TELEMETRY.EVENTS_VIEW (filter RESOURCE_ATTRIBUTES['snow.query.id'] on the run's EXECUTE_QUERY_ID), and tell me the root cause and the fix.
 ```
@@ -84,6 +83,16 @@ Run the cells under heading 7 (spark_history through failures) in de4_spark_on_s
 ```
 Expect: your sessions and batch runs as a table, the same data as **Monitoring > Spark**, then `payments_nightly_broken` in `SPARK_JOB_FAILURES` about a minute after **alert_now**. In production the action would email the on-call engineer or open a ticket; here it records the failure so nothing leaves the lab.
 Check: de4_alert
+
+### See it all in Spark Monitoring
+Where: Snowsight > **Monitoring > Spark**
+Media: de4_spark_sessions.mp4 | Monitoring > Spark > Select warehouse BANKING_WH > Spark Sessions
+You've worked in the notebook so far. Now look at the same work from the UI.
+1. Open **Monitoring > Spark** and select the warehouse **BANKING_WH**.
+2. **Spark Sessions** lists your session, `de4_<your user>`, with you as the owner and its queries.
+3. **Batch Jobs** lists `payments_nightly` (succeeded) and `payments_nightly_broken` (failed), with logs and the Telemetry trace.
+Expect: your session and both batch runs listed, matching what you ran in the notebook
+Note: the clips in the earlier steps show what this screen looks like at that point in the lab.
 
 ## Check your work
 Your Spark session is listed under your name, `PAYMENTS_CURRENT` matches the source, a `payments_nightly` batch job succeeded, a failed run is recorded, and `SPARK_JOB_FAILURE_ALERT` exists.

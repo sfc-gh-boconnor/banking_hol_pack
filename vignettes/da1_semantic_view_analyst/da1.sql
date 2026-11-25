@@ -5,8 +5,7 @@
 --            client's payments health that anyone can query in plain English."
 -- Prereq:   setup/catchup/core_analytics.sql  (STG_* views, FEEDBACK_ENRICHED)
 -- Builds:   V_CLIENT_PAYMENT_SUMMARY, V_CLIENT_ALERTS, SV_CLIENT_360
--- (SV_PAYMENTS from the original lab is in setup/catchup/semantic_view_and_agent.sql
---  - open it and compare as a worked example.)
+-- Skipped DA1? setup/catchup/client_360.sql builds the same objects.
 -- =====================================================
 
 USE ROLE HOL_PARTICIPANT;

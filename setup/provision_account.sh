@@ -128,7 +128,6 @@ fi
 if (( REFERENCE_BUILD )); then
   step "Reference build (catch-up scripts, DA1, OPS1)"
   run_sql setup/catchup/core_analytics.sql
-  run_sql setup/catchup/semantic_view_and_agent.sql
   run_sql vignettes/da1_semantic_view_analyst/da1.sql
   run_sql vignettes/ops1_payments_360_agent/ops1.sql
 fi

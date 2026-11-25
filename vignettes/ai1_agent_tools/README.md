@@ -4,7 +4,7 @@
 |---|---|
 | **Persona** | AI Builder |
 | **Time** | ~45 min |
-| **Prerequisites** | `core_analytics.sql`, `semantic_view_and_agent.sql` |
+| **Prerequisites** | DA1 (`SV_CLIENT_360`), or run `client_360.sql` if you skipped it |
 
 ## Business question
 > Ops staff ask about specific payments by ID and about scheme rules - not just aggregates. Give the agent precise tools.
@@ -35,7 +35,7 @@ Media: ai1_create_agent.mp4 | + Add new > Agent > name it payments_investigator 
 1. Rename the new agent file to `payments_investigator` straight away.
 2. Paste this brief into Cortex Code.
 ```prompt
-Create a Cortex Agent BANKING_HOL.AGENTS.PAYMENTS_INVESTIGATOR with display name "Payments Investigator". Tools: a generic function tool PaymentLookup on BANKING_HOL.AGENTS.PAYMENT_LOOKUP (input payment_id string), a generic function tool SchemeRules on BANKING_HOL.AGENTS.SCHEME_RULES (input scheme string), and a Cortex Analyst tool PaymentsOps on BANKING_HOL.ANALYTICS.SV_PAYMENTS, all on warehouse BANKING_WH. Orchestration: for a specific payment ID call PaymentLookup; for a scheme's cutoff, limit, settlement cycle or SLA call SchemeRules; use PaymentsOps for aggregate KPI questions. Deploy it.
+Create a Cortex Agent BANKING_HOL.AGENTS.PAYMENTS_INVESTIGATOR with display name "Payments Investigator". Tools: a generic function tool PaymentLookup on BANKING_HOL.AGENTS.PAYMENT_LOOKUP (input payment_id string), a generic function tool SchemeRules on BANKING_HOL.AGENTS.SCHEME_RULES (input scheme string), and a Cortex Analyst tool Client360 on your semantic view BANKING_HOL.ANALYTICS.SV_CLIENT_360, all on warehouse BANKING_WH. Orchestration: for a specific payment ID call PaymentLookup; for a scheme's cutoff, limit, settlement cycle or SLA call SchemeRules; use Client360 for aggregate questions about clients, payments, alerts and feedback. Deploy it.
 ```
 Expect: `PAYMENTS_INVESTIGATOR` deployed in `BANKING_HOL.AGENTS`
 Check: ai1_agent

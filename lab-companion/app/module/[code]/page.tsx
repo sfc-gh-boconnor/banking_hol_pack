@@ -24,7 +24,14 @@ export default async function ModulePage({ params }: { params: Promise<{ code: s
   if (!m) notFound()
   const idx = MODULES.findIndex((x) => x.code === code)
   const next = MODULES[idx + 1]
-  const relevantCatchups = CATCHUPS.filter((c) => m.prerequisites.includes(c.sqlPath.split("/").pop()!))
+  // catch-up scripts and other modules' answer keys (e.g. ops1.sql) named in the Prerequisites row,
+  // in the order the row names them
+  const fileOf = (path: string) => path.split("/").pop()!
+  const answerKeys = MODULES.filter((x) => x.code !== m.code && x.sqlPath && x.sql)
+    .map((x) => ({ name: `${x.code} answer key`, sqlPath: x.sqlPath, sql: x.sql }))
+  const relevantCatchups = [...CATCHUPS, ...answerKeys]
+    .filter((c) => m.prerequisites.includes(fileOf(c.sqlPath)))
+    .sort((a, b) => m.prerequisites.indexOf(fileOf(a.sqlPath)) - m.prerequisites.indexOf(fileOf(b.sqlPath)))
 
   return (
     <main className="mx-auto w-full max-w-7xl space-y-6 px-4 py-6 sm:px-6 sm:py-10 lg:px-8">

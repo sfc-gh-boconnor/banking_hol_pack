@@ -17,6 +17,21 @@
 - Ops-floor queries served from the **interactive warehouse** `HOL_INTERACTIVE_WH`, straight off the mirrored table
 - Dynamic table `DT_PAYMENT_INCIDENTS` that flags failing payment clusters within a minute
 
+```text
+Stream script (notebook)
+        |  ~20 events/s
+        v
+Snowflake Postgres  HOL_PAYMENTS_PG
+        |  Data Mirror
+        v
+Iceberg  PAYMENTS_MIRROR  ($live, $changes)
+        |                      |
+        v                      v
+Interactive warehouse     Dynamic table
+HOL_INTERACTIVE_WH        DT_PAYMENT_INCIDENTS
+(sub-second ops queries)  (flags failing clusters)
+```
+
 ## End-to-end real-time analytics in Snowflake
 - **Connectivity:** **Snowflake Postgres** runs the operational database inside Snowflake, and **Data Mirroring** (preview) streams its changes continuously into open Iceberg tables, with no pipeline to run. For events from apps and Kafka, **Snowpipe Streaming** (GA) writes rows into tables seconds after they happen through a pipe and named channels, and **Elastic Channels** scale it. (Snowpipe Streaming isn't used in this notebook: Workspace notebooks run in Snowpark Container Services, where its key-pair sign-in is rejected. [`de3_stream.py`](de3_stream.py) shows the SDK for an app outside Snowflake.)
 - **Transformation:** dynamic tables refresh on a target lag measured in minutes or seconds. **Streaming transformations** (private preview) transform rows as they arrive.
@@ -82,7 +97,7 @@ Check: de3_mirror
 ```prompt
 Under heading 4, add a Python cell named stream that runs pg.stream_payments(conn, get_active_session()) to insert about 20 payment events a second into Postgres for 5 minutes, and prints the total it returns. Then explain in a markdown cell what the stream sends, including the SEPA incident in the second half.
 ```
-Expect: the cell runs for 5 minutes, printing progress every 30 seconds, and sends about 6,000 events. While it runs, open a SQL worksheet and run `SELECT COUNT(*) FROM PAYMENTS_MIRROR.PAYMENTS.PAYMENT_EVENTS$live` a few times: the count climbs about 20 to 40 seconds behind Postgres. Halfway through, one corporate client's SEPA payments start failing with "Beneficiary bank unavailable".
+Expect: the cell runs for 5 minutes, printing progress every 30 seconds, and sends about 6,000 events. While it runs, open a SQL worksheet and run `SELECT COUNT(*) FROM PAYMENTS_MIRROR.PAYMENTS.PAYMENT_EVENTS$live` a few times: the count climbs about 20 to 40 seconds behind Postgres. Halfway through, one corporate client's SEPA payments start failing with "Beneficiary bank unavailable". The stream cell itself only prints how many events it sent (it doesn't report failures): you'll see the failed payments in the freshness check in the next step, spread through the run.
 
 ### Measure how fresh the data is
 ```prompt
@@ -98,7 +113,7 @@ Expect: answers from `HOL_INTERACTIVE_WH` in well under a second once it's warm,
 
 ### Flag incidents automatically
 ```prompt
-Under heading 7, add a SQL cell named incidents that creates the dynamic table BANKING_HOL.REALTIME.DT_PAYMENT_INCIDENTS with TARGET_LAG '1 minute' on warehouse BANKING_WH: failed payments in PAYMENTS_MIRROR.PAYMENTS.PAYMENT_EVENTS from the last 15 minutes grouped by CUSTOMER_ID (with CUSTOMER_NAME from BANKING_HOL.RAW_DATA.CUSTOMERS), SCHEME and FAILURE_REASON, with the failed count, failed value, first and last failure, keeping groups with at least 5 failures. Then query it, largest first, and draft the message the operations team would send to the client's relationship manager.
+Under heading 7, add a SQL cell named incidents that creates the dynamic table BANKING_HOL.REALTIME.DT_PAYMENT_INCIDENTS with TARGET_LAG '1 minute' on warehouse BANKING_WH: failed payments in PAYMENTS_MIRROR.PAYMENTS.PAYMENT_EVENTS from the last 15 minutes grouped by CUSTOMER_ID (with CUSTOMER_NAME from BANKING_HOL.RAW_DATA.CUSTOMERS), SCHEME and FAILURE_REASON, with the failed count, failed value, first and last failure, keeping groups with at least 5 failures. Then query it, largest first, then add a Python cell named draft_message that takes the top incident's real values (client, RM, scheme, failure reason, failed count and value, first and last failure) and fills them into a message template to the client's relationship manager, rendered with st.markdown or display(Markdown(...)) so the actual numbers appear.
 ```
 Expect: one incident: Crown Logistics' SEPA payments failing with "Beneficiary bank unavailable", with the count, value and time window. The table refreshes every minute on its own, so the moment a new cluster starts in Postgres, it appears here. This is the same pattern as DE2's live SLA breaches, now on data streaming out of an operational database. Cortex Code automations (GOV2) could post it to the ops team.
 Check: de3_incidents

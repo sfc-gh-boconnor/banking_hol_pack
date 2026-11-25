@@ -37,7 +37,7 @@ Every attendee does the **shared core**, then follows one pathway. Vignettes are
 ### Payments Operations analyst (low-code)
 | Block | Vignette | Time |
 |---|---|---|
-| A | Facilitator has pre-run the catch-up scripts and DA1. [OPS1 Corporate Payments 360 agent](../vignettes/ops1_payments_360_agent/) | 45 |
+| A | DA1 (`SV_CLIENT_360`), or the facilitator runs `setup/catchup/client_360.sql`. Then [OPS1 Corporate Payments 360 agent](../vignettes/ops1_payments_360_agent/) | 45 |
 | A/B | [OPS2 Alert triage + negative sentiment feed](../vignettes/ops2_alert_triage/) | 30 |
 | B | [OPS3 Snowflake CoWork: charts, Deep Research, automations, documents and an AI dashboard](../vignettes/ops3_cowork_dashboards/) (agent built at provisioning) | 45 |
 | B | [DA2 AI SQL on feedback](../vignettes/da2_aisql_feedback/) sections 2.3-2.5 only (AI_FILTER, AI_AGG, AI_COMPLETE) | 30 |
@@ -45,9 +45,10 @@ Every attendee does the **shared core**, then follows one pathway. Vignettes are
 ### AI Builder
 | Block | Vignette | Time |
 |---|---|---|
-| A | Run the catch-up scripts and DA1, then [AI1 Agent with custom tools](../vignettes/ai1_agent_tools/) | 45 |
+| A | Run `setup/catchup/core_analytics.sql`, then [DA1 Build a semantic view + Cortex Analyst](../vignettes/da1_semantic_view_analyst/): every agent in this pathway uses the `SV_CLIENT_360` you build | 60 |
+| A | [AI1 Agent with custom tools](../vignettes/ai1_agent_tools/) | 45 |
 | B | [AI3 Marketplace knowledge extension](../vignettes/ai3_knowledge_extension/) | 30 |
-| B | [AI2 Snowflake-managed MCP server](../vignettes/ai2_mcp_server/) (needs OPS1 - run its script first) | 30 |
+| B | [AI2 Snowflake-managed MCP server](../vignettes/ai2_mcp_server/) (needs OPS1's agent: run `ops1.sql`, shown on the AI2 page, first) | 30 |
 
 ### Governance / Risk
 | Block | Vignette | Time |
@@ -60,17 +61,17 @@ Every attendee does the **shared core**, then follows one pathway. Vignettes are
 ## Catch-up order (any vignette, any time)
 
 ```
-setup/catchup/core_analytics.sql          -- staging, marts, FEEDBACK_ENRICHED
-setup/catchup/semantic_view_and_agent.sql -- SV_PAYMENTS + PAYMENTS_ASSISTANT
-vignettes/da1_semantic_view_analyst/da1.sql   -- SV_CLIENT_360 (needed by OPS1, AI2, AI3)
-vignettes/ops1_payments_360_agent/ops1.sql    -- needed by AI2
+setup/catchup/core_analytics.sql          -- staging, marts, FEEDBACK_ENRICHED (AI scoring)
+setup/catchup/client_360.sql              -- skipped DA1? SV_CLIENT_360 (needed by OPS1, AI1, AI2, AI3);
+                                          --   builds any missing staging views and FEEDBACK_ENRICHED first
+vignettes/ops1_payments_360_agent/ops1.sql    -- CORPORATE_PAYMENTS_360 agent (needed by AI2)
 ```
 
 ## Cross-persona finale (25 min)
 
 In Snowflake CoWork, open **Corporate Payments 360** and have each pathway ask a question that uses their work:
 
-- **Data Engineer:** "Which schemes breached SLA most often?" (your dbt marts feed this)
+- **Data Engineer:** "Which 5 clients have the lowest payment success rate?" (your dbt staging models feed this)
 - **Data Analyst:** "Which clients have negative sentiment and a success rate below 96%?" (your semantic view and AI enrichment)
 - **Payments Ops:** "Brief me on Royal Trust PLC before my call." (your agent)
 - **AI Builder:** ask the same question from Cortex Code through the MCP server

@@ -3,7 +3,7 @@
 -- Persona: AI Builder
 -- Question: "Ops staff ask about specific payments by ID and about scheme
 --            rules - not just aggregates. Give the agent precise tools."
--- Prereq:   setup/catchup/core_analytics.sql + setup/catchup/semantic_view_and_agent.sql
+-- Prereq:   DA1 (SV_CLIENT_360), or setup/catchup/client_360.sql if you skipped it
 -- Builds:   2 UDF tools + PAYMENTS_INVESTIGATOR agent
 -- =====================================================
 
@@ -89,7 +89,7 @@ CREATE OR REPLACE AGENT BANKING_HOL.AGENTS.PAYMENTS_INVESTIGATOR
     orchestration: >
       If the user gives a payment ID (format PAY followed by digits), call PaymentLookup.
       For questions about a scheme's cutoff, limit, settlement cycle or SLA, call SchemeRules.
-      For counts, volumes, trends or comparisons, use PaymentsOps.
+      For counts, volumes, trends or comparisons across clients, RMs, alerts or feedback, use Client360.
       You can chain tools, e.g. look up a payment then check its scheme's cutoff.
   tools:
     - tool_spec:
@@ -116,8 +116,8 @@ CREATE OR REPLACE AGENT BANKING_HOL.AGENTS.PAYMENTS_INVESTIGATOR
           required: [scheme]
     - tool_spec:
         type: cortex_analyst_text_to_sql
-        name: PaymentsOps
-        description: Aggregated daily payment KPIs and SLA compliance by scheme, region, channel, sector and RM.
+        name: Client360
+        description: Corporate client 360 from DA1 - payment totals, success rate and failed value per client, RM, alerts and AI-scored feedback sentiment.
   tool_resources:
     PaymentLookup:
       type: function
@@ -131,8 +131,8 @@ CREATE OR REPLACE AGENT BANKING_HOL.AGENTS.PAYMENTS_INVESTIGATOR
       execution_environment:
         type: warehouse
         warehouse: BANKING_WH
-    PaymentsOps:
-      semantic_view: BANKING_HOL.ANALYTICS.SV_PAYMENTS
+    Client360:
+      semantic_view: BANKING_HOL.ANALYTICS.SV_CLIENT_360
       execution_environment:
         type: warehouse
         warehouse: BANKING_WH

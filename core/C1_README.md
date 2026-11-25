@@ -25,9 +25,8 @@ Check: c1_iceberg_published
 Where: the **Home / CoCo** toggle > **Home**, then **Projects > Workspaces** > the **My Workspace** dropdown (top left) > **banking-hol-pack**
 Media: start_open_workspace.mp4 | CoCo > Home > Workspaces > banking-hol-pack, then the Cortex Code sidebar
 1. Switch the toggle at the top left back to **Home**.
-2. Open **Projects > Workspaces**.
+2. Click **Workspaces** (under Projects).
 3. Open the **My Workspace** dropdown (top left) and pick **banking-hol-pack**.
-**Important:** go back to **Home** first. Workspaces isn't on the CoCo side.
 What's in the Workspace:
 - **+** creates SQL files, notebooks, dbt projects, Streamlit apps, agents, semantic views and pipelines
 - the file explorer (left) holds the lab: `dbt/`, `notebooks/`, `vignettes/`
@@ -35,7 +34,6 @@ What's in the Workspace:
 - Cortex Code is here too, as a sidebar: the round button at the bottom right
 Use **banking-hol-pack** whenever a module says Workspace. Cortex Code only finds the lab files when it's open.
 **Tip:** Snowsight sometimes reopens **My Workspace**. Check the name at the top left whenever you come back.
-For the rest of this module, use either the CoCo tab or the Workspace sidebar.
 Expect: the banking-hol-pack Workspace open, with `dbt/`, `notebooks/` and `vignettes/` in the file explorer
 
 ### Prove the guard-rails

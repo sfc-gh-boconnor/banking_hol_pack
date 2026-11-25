@@ -18,11 +18,11 @@
 ## Steps
 ### Build the SLA breach monitor
 Where: the Cortex Code sidebar
-Media: de2_catalog_preview.mp4 | Catalog > Explorer > BANKING_HOL > ANALYTICS > Dynamic tables > DT_LIVE_SLA_BREACHES > Preview, Lineage
 ```prompt
 Create a dynamic table BANKING_HOL.ANALYTICS.DT_LIVE_SLA_BREACHES with TARGET_LAG = '1 minute' on warehouse BANKING_WH. From MART_SLA_COMPLIANCE where SLA_STATUS = 'BREACH', group by PAYMENT_TYPE and return total payments, breached (failed) payments, breach rate % and the earliest and latest breach day.
 ```
-Expect: one row per payment scheme with breaches. To see it in the UI: Snowsight > **Catalog > Database Explorer > BANKING_HOL > ANALYTICS > Dynamic Tables > DT_LIVE_SLA_BREACHES**, then the **Data Preview** and **Lineage** tabs (lineage back to `MART_SLA_COMPLIANCE` and the Iceberg sources).
+Expect: one row per payment scheme with breaches.
+To browse it in the UI, see the **Watch them refresh** step.
 
 ### Build the failed-payment triage feed straight off Iceberg
 Media: de2_dt_graph.mp4 | Transformation > Dynamic tables > DT_RETRYABLE_SUMMARY > Graph (pick BANKING_WH)
@@ -33,6 +33,8 @@ Expect: two chained dynamic tables. In Snowsight, **Monitoring > Dynamic Tables 
 Check: de2_dynamic_tables
 
 ### Watch them refresh
+Where: the Cortex Code sidebar, then optionally Snowsight > **Catalog > Database Explorer > BANKING_HOL > ANALYTICS > Dynamic Tables > DT_LIVE_SLA_BREACHES**, with the **Data Preview** and **Lineage** tabs (lineage back to `MART_SLA_COMPLIANCE` and the Iceberg sources)
+Media: de2_catalog_preview.mp4 | Catalog > Explorer > BANKING_HOL > ANALYTICS > Dynamic tables > DT_LIVE_SLA_BREACHES > Preview, Lineage
 ```prompt
 Show me the refresh history for the DT_ dynamic tables in BANKING_HOL.ANALYTICS, and how many rows DT_RETRYABLE_SUMMARY has. If it has not refreshed yet, refresh it.
 ```
@@ -48,8 +50,8 @@ Check: de2_dmfs
 
 ### Orchestrate the pipeline with Pipeline Builder
 Where: banking-hol-pack Workspace **Home** page > **Pipeline Builder** (Preview)
-1. Go to the Workspace **Home** page (the house icon at the top of the file explorer).
-2. Press **Pipeline Builder**.
+1. In the **banking-hol-pack** Workspace, open the Workspace **Home** tab (the house icon at the top of the file explorer). This is the Home tab inside Workspaces, not the main Snowsight Home.
+2. Press the **Pipeline Builder** icon.
 3. In the **Create Pipeline Builder** dialog, set:
 - name: `payments_nightly`
 - **Database and schema**: **BANKING_HOL.ANALYTICS**
@@ -61,7 +63,7 @@ Paste: the **Prompt** box in Create Pipeline Builder, then click **Generate** (n
 ```prompt
 Build a nightly pipeline in BANKING_HOL.ANALYTICS on warehouse BANKING_WH, scheduled at 05:00 Europe/London. Task 1 BANKING_HOL.ANALYTICS.PIPE_DBT_BUILD runs EXECUTE DBT PROJECT BANKING_HOL.ANALYTICS.BANKING_DBT ARGS = 'build'. Task 2 BANKING_HOL.ANALYTICS.PIPE_REFRESH_SLA runs after it: ALTER DYNAMIC TABLE BANKING_HOL.ANALYTICS.DT_LIVE_SLA_BREACHES REFRESH. Task 3 BANKING_HOL.ANALYTICS.PIPE_DQ_CHECKS runs after task 1: SELECT the NULL_COUNT on RM_NAME and DUPLICATE_COUNT on CUSTOMER_ID of BANKING_HOL.ANALYTICS.MART_CUSTOMER_PAYMENTS. Set warehouse BANKING_WH on each of the three tasks itself, not as a task-graph default. Set the task graph's desired state to Suspended so nothing runs after deploy.
 ```
-Expect: Cortex first drafts a plan (the three tasks, their order, the 05:00 schedule and the warehouse) and asks you to **Proceed**, **Modify** or **Cancel**. Check the plan matches the prompt and choose **Proceed** (or **Modify** to correct it). You then get a canvas with three connected tasks (dbt build, then the dynamic table refresh and the data quality checks). Before you deploy, open the task graph's settings (**Objects > Task graphs**, or select a task > **Graph** tab > **Edit graph settings**) and check **Desired state** is **Suspended**: Generate with Cortex can set it to Resumed, and the canvas Deploy uses whatever the project files say. Then **Deploy**, review the planned changes and **Deploy** again. To view the pipeline later, open it from its `payments_nightly` link in the Workspace (or hover over the folder in the file explorer and select the **Open pipeline builder** icon); after the first deploy, **Deployed Project** on the canvas toolbar opens it in Snowsight, where the task graph's **Graph** tab shows the run order. The tasks and the task graph are created suspended in `ANALYTICS`, and you can see them under **Monitoring > Task History**. Pipeline Builder orchestrates tasks; it doesn't create the dynamic tables themselves, which is why you built those first. If you build the pipeline a second time and **Deploy** fails with "cannot change orchestration model while ... PIPE_DBT_BUILD is not suspended", tasks from your first attempt are still running: ask Cortex Code to suspend `BANKING_HOL.ANALYTICS.PIPE_DBT_BUILD`, then deploy again.
+Expect: Cortex first drafts a plan (the three tasks, their order, the 05:00 schedule and the warehouse) and asks you to **Proceed**, **Modify** or **Cancel**. Check the plan matches the prompt and choose **Proceed** (or **Modify** to correct it). You then get a canvas with three connected tasks (dbt build, then the dynamic table refresh and the data quality checks). Before you deploy, open the task graph's settings (**Objects > Task graphs**, or select a task > **Graph** tab > **Edit graph settings**) and check **Desired state** is **Suspended**: Generate with Cortex can set it to Resumed, and the canvas Deploy uses whatever the project files say. Then **Deploy**, review the planned changes and **Deploy** again. Once it's created, refresh the file explorer if needed and open `payments_nightly` from the sidebar. Click any step on the canvas to see its details, and use **Deploy** to run the pipeline or create a task from it. To view the pipeline later, open it from its `payments_nightly` link in the Workspace (or hover over the folder in the file explorer and select the **Open pipeline builder** icon); after the first deploy, **Deployed Project** on the canvas toolbar opens it in Snowsight, where the task graph's **Graph** tab shows the run order. The tasks and the task graph are created suspended in `ANALYTICS`, and you can see them under **Monitoring > Task History**. Pipeline Builder orchestrates tasks; it doesn't create the dynamic tables themselves, which is why you built those first. If you build the pipeline a second time and **Deploy** fails with "cannot change orchestration model while ... PIPE_DBT_BUILD is not suspended", tasks from your first attempt are still running: ask Cortex Code to suspend `BANKING_HOL.ANALYTICS.PIPE_DBT_BUILD`, then deploy again.
 Check: de2_pipeline
 Dynamic tables keep themselves fresh, but the dbt build and the data quality checks need scheduling. Pipeline Builder draws that as a task graph.
 **Autonomous Data Engineering:** describe a pipeline in plain English, refine it visually, and deploy it as a native **task graph** (public preview). No external orchestrator needed.

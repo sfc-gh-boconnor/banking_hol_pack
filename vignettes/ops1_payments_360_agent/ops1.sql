@@ -3,9 +3,7 @@
 -- Persona: Payments Operations analyst (no SQL needed after setup)
 -- Question: "Before I call a client, tell me everything: payments health,
 --            open incidents, and what they have been complaining about."
--- Prereq:   setup/catchup/core_analytics.sql + DA1 (SV_CLIENT_360)
---           + setup/catchup/semantic_view_and_agent.sql (SV_PAYMENTS)
---           Facilitator shortcut: run all three catch-up/DA1 scripts in order.
+-- Prereq:   DA1 (SV_CLIENT_360), or setup/catchup/client_360.sql if you skipped it
 -- =====================================================
 
 USE ROLE HOL_PARTICIPANT;
@@ -13,7 +11,7 @@ USE SECONDARY ROLES NONE;   -- see exactly what an attendee sees
 USE WAREHOUSE BANKING_WH;
 
 -- -----------------------------------------------------
--- OPS1.1 The agent: two semantic views as tools + charting
+-- OPS1.1 The agent: the DA1 semantic view as a tool + charting
 -- Created in SNOWFLAKE_INTELLIGENCE.AGENTS so it appears in Snowflake CoWork
 -- for everyone with access.
 -- (Snowsight alternative: AI & ML > Agents > Create agent - same settings.)
@@ -40,16 +38,14 @@ CREATE OR REPLACE AGENT SNOWFLAKE_INTELLIGENCE.AGENTS.CORPORATE_PAYMENTS_360
       failed value, open and critical alerts, and feedback sentiment with the main topic.
       If the data cannot answer the question, say so - never guess.
     orchestration: >
-      Use Client360 for anything about a specific client, relationship manager,
-      KYC status, alerts or incidents, and client feedback.
-      Use PaymentsOps for scheme-level and daily trends: volumes by scheme/region/channel,
-      processing times, P95 latency and SLA compliance or breaches.
+      Use Client360 for questions about clients, relationship managers,
+      KYC status, payment totals and success rates, alerts or incidents, and client feedback.
       For a client briefing you may need Client360 more than once.
     sample_questions:
       - question: "Brief me on the client with the most failed payment value"
       - question: "Which relationship managers have the most open critical alerts?"
-      - question: "Which payment schemes breached SLA most often in the last 30 days?"
-      - question: "Show weekly payment volume for CHAPS as a chart"
+      - question: "Which clients have negative sentiment and a success rate below 96%?"
+      - question: "Show failed payment value by sector as a chart"
 
   tools:
     - tool_spec:
@@ -59,12 +55,6 @@ CREATE OR REPLACE AGENT SNOWFLAKE_INTELLIGENCE.AGENTS.CORPORATE_PAYMENTS_360
           Corporate client 360: one row per client with sector, country, KYC status and RM;
           payment totals, success rate and failed value per client; AI-scored feedback
           sentiment and topic; and operational alerts with severity, status and resolution time.
-    - tool_spec:
-        type: cortex_analyst_text_to_sql
-        name: PaymentsOps
-        description: >
-          Daily payment KPIs by scheme (CHAPS, Faster Payments, BACS, SWIFT, SEPA, Wire),
-          region, channel, sector and RM, plus daily SLA compliance status per scheme.
     - tool_spec:
         type: data_to_chart
         name: data_to_chart
@@ -76,11 +66,6 @@ CREATE OR REPLACE AGENT SNOWFLAKE_INTELLIGENCE.AGENTS.CORPORATE_PAYMENTS_360
       execution_environment:
         type: warehouse
         warehouse: BANKING_WH
-    PaymentsOps:
-      semantic_view: BANKING_HOL.ANALYTICS.SV_PAYMENTS
-      execution_environment:
-        type: warehouse
-        warehouse: BANKING_WH
   $$;
 
 -- -----------------------------------------------------
@@ -88,7 +73,7 @@ CREATE OR REPLACE AGENT SNOWFLAKE_INTELLIGENCE.AGENTS.CORPORATE_PAYMENTS_360
 -- Select "Corporate Payments 360" and try:
 --   1. "Brief me on the client with the most failed payment value"
 --   2. "Which of Priya Sharma's clients have open critical alerts?"
---   3. "Is SWIFT meeting its SLA this month? Show a chart."
+--   3. "Show failed payment value by sector as a chart"
 --   4. "Which clients have negative sentiment AND a success rate below 96%?"
 -- Expand "Show details" on each answer to see the tool and SQL used.
 -- -----------------------------------------------------
