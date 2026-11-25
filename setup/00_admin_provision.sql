@@ -392,7 +392,7 @@ GRANT IMPORTED PRIVILEGES ON DATABASE SNOWFLAKE_DOCS_CKE TO ROLE HOL_PARTICIPANT
 -- 0.6 DataOps passwordless events (single sign-on through DataOps.live)
 -- The SSO login creates its own user when the attendee registers, after this setup
 -- has run: a 64-character hex name, no password, default role ACCOUNTADMIN. A task
--- gives that user the lab defaults (first name Attendee, HOL_PARTICIPANT, BANKING_WH),
+-- gives that user the lab defaults (first and display name Attendee, HOL_PARTICIPANT, BANKING_WH),
 -- then suspends itself. Only switched on where DataOps' Authentik integration exists,
 -- so standalone installs and password events are untouched.
 -- -----------------------------------------------------
@@ -416,11 +416,12 @@ def run(session):
         name = u["name"]
         if not re.fullmatch(r"[0-9a-f]{64}", name) or str(u.get("has_password")).lower() == "true":
             continue
-        if u.get("default_role") == "HOL_PARTICIPANT" and u.get("first_name") == "Attendee":
+        if (u.get("default_role") == "HOL_PARTICIPANT" and u.get("first_name") == "Attendee"
+                and u.get("display_name") == "Attendee"):
             ready += 1
             continue
         session.sql(f"GRANT ROLE HOL_PARTICIPANT TO USER {q(name)}").collect()
-        session.sql(f"""ALTER USER {q(name)} SET FIRST_NAME = 'Attendee', DEFAULT_ROLE = HOL_PARTICIPANT,
+        session.sql(f"""ALTER USER {q(name)} SET FIRST_NAME = 'Attendee', DISPLAY_NAME = 'Attendee', DEFAULT_ROLE = HOL_PARTICIPANT,
             DEFAULT_WAREHOUSE = BANKING_WH, DEFAULT_NAMESPACE = BANKING_HOL, DEFAULT_SECONDARY_ROLES = ()""").collect()
         done.append(name[:8])
     if done or ready:

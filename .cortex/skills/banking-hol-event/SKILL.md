@@ -37,7 +37,7 @@ Ask the user, with `ask_user_question`, for:
 - **pool**: the number of attendee accounts. Expected attendees plus about 10% spare, because a failed account can be rerun but allocations can't be moved.
 - **start / end**: UTC, or ISO with an offset.
 - Optional: **domains** (allowed attendee email domains, e.g. `examplebank.co.uk snowflake.com`), **region** (default `aws_us_west_2`), **build** time (default 24 h before start).
-- Optional: **passwordless** (`--passwordless`, only settable at creation). Attendees sign in to Snowsight, the Lab Companion and CoWork with single sign-on through DataOps.live (Authentik, integration `AUTHENTIK_<ACCOUNT>`) instead of a password. The SSO login creates its own user when the attendee registers (64-character hex name, default role ACCOUNTADMIN). Setup 00's task `BANKING_HOL.LAB.ADOPT_SSO_ATTENDEES_TASK` then gives it first name Attendee, HOL_PARTICIPANT and BANKING_WH within 2 minutes, and suspends itself. Tested on a 1-account event (24 Nov 2026).
+- Optional: **passwordless** (`--passwordless`, only settable at creation). Attendees sign in to Snowsight, the Lab Companion and CoWork with single sign-on through DataOps.live (Authentik, integration `AUTHENTIK_<ACCOUNT>`) instead of a password. The SSO login creates its own user when the attendee registers (64-character hex name, default role ACCOUNTADMIN). Setup 00's task `BANKING_HOL.LAB.ADOPT_SSO_ATTENDEES_TASK` then gives it first and display name Attendee, HOL_PARTICIPANT and BANKING_WH within 2 minutes, and suspends itself. Tested on a 1-account event (24 Nov 2026).
 
 ### 2. Dry run and confirm
 
