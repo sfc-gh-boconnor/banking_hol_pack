@@ -275,8 +275,8 @@ $$;
 -- Mirroring needs STANDARD (not BURSTABLE) compute; the instance bills while it runs.
 GRANT CREATE POSTGRES INSTANCE ON ACCOUNT TO ROLE HOL_PARTICIPANT;
 -- On a brand-new account SNOWFLAKE.POSTGRES_MIRROR_ADMIN can be missing until Snowflake sets up the
--- Postgres feature, so the grant must not fail provisioning. Re-run this file (or just this grant) as
--- ACCOUNTADMIN later if DE3's mirror step reports it missing.
+-- Postgres feature, so the grant must not fail provisioning. If it's missing now,
+-- LAB.RETRY_LATE_GRANTS_TASK (section 0.7) keeps trying until it succeeds.
 EXECUTE IMMEDIATE $$
 BEGIN
   SHOW POSTGRES INSTANCES;
@@ -446,3 +446,49 @@ END;
 $$;
 
 SELECT 'Setup 00 complete - now run 01_seed_synthetic_data.sql as HOL_ADMIN' AS STATUS;
+
+-- -----------------------------------------------------
+-- 0.7 Grants that a brand-new account can't take yet
+-- SNOWFLAKE.POSTGRES_MIRROR_ADMIN (DE3 mirror) and SNOWFLAKE.EVENTS_VIEWER (DS job logs) can appear
+-- some minutes after the account is created, after this setup has run. A task retries them every
+-- 10 minutes and suspends itself once HOL_PARTICIPANT has both.
+-- -----------------------------------------------------
+CREATE OR REPLACE PROCEDURE BANKING_HOL.LAB.RETRY_LATE_GRANTS()
+  RETURNS VARCHAR LANGUAGE SQL
+  COMMENT = 'Grant application roles that appear after provisioning, then stop retrying'
+  EXECUTE AS OWNER
+AS $$
+DECLARE
+  missing INTEGER DEFAULT 0;
+BEGIN
+  BEGIN
+    GRANT APPLICATION ROLE SNOWFLAKE.POSTGRES_MIRROR_ADMIN TO ROLE HOL_PARTICIPANT;
+  EXCEPTION WHEN OTHER THEN missing := missing + 1;
+  END;
+  BEGIN
+    GRANT APPLICATION ROLE SNOWFLAKE.EVENTS_VIEWER TO ROLE HOL_PARTICIPANT;
+  EXCEPTION WHEN OTHER THEN missing := missing + 1;
+  END;
+  IF (missing = 0) THEN
+    ALTER TASK IF EXISTS BANKING_HOL.LAB.RETRY_LATE_GRANTS_TASK SUSPEND;
+    RETURN 'All late grants in place';
+  END IF;
+  RETURN missing || ' grant(s) still unavailable; retrying in 10 minutes';
+END;
+$$;
+CREATE OR REPLACE TASK BANKING_HOL.LAB.RETRY_LATE_GRANTS_TASK
+  SCHEDULE = '10 MINUTE'
+  USER_TASK_MANAGED_INITIAL_WAREHOUSE_SIZE = 'XSMALL'
+  COMMENT = 'Retries POSTGRES_MIRROR_ADMIN and EVENTS_VIEWER grants until both succeed'
+  AS CALL BANKING_HOL.LAB.RETRY_LATE_GRANTS();
+EXECUTE IMMEDIATE $$
+DECLARE
+  result VARCHAR;
+BEGIN
+  CALL BANKING_HOL.LAB.RETRY_LATE_GRANTS() INTO :result;
+  IF (result <> 'All late grants in place') THEN
+    ALTER TASK BANKING_HOL.LAB.RETRY_LATE_GRANTS_TASK RESUME;
+  END IF;
+  RETURN result;
+END;
+$$;
