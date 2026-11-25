@@ -5,4 +5,4 @@ export const name = "da1_create_sv"
 export const viewport = { width: 1024, height: 640 }
 export const outputWidth = 720
 export const crop = undefined
-export const run = workspaceAddRun("Semantic view", { after: nameAfter("sv_client_360"), prompt: promptOf("da1_semantic_view_analyst", "Create the semantic view") })
+export const run = workspaceAddRun("Semantic view", { after: nameAfter("sv_client_360"), prompt: promptOf("da1_semantic_view_analyst", "Write the bank's definitions once") })

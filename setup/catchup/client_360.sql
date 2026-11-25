@@ -218,7 +218,7 @@ CREATE OR REPLACE SEMANTIC VIEW SV_CLIENT_360
 
   COMMENT = 'Corporate Client 360 for Payments Operations: payments health, feedback sentiment and operational alerts per client'
 
-  AI_SQL_GENERATION 'Client names are stored in upper case; match them case-insensitively with ILIKE. Round percentages to 1 decimal place.'
+  AI_SQL_GENERATION 'Sentiment labels are stored in upper case: POSITIVE, NEUTRAL or NEGATIVE. "Negative sentiment" for a client means their average sentiment score is below 0. Client names are stored in upper case; match them case-insensitively with ILIKE. Round percentages to 1 decimal place.'
 
   AI_VERIFIED_QUERIES (
     worst_clients AS (
@@ -236,6 +236,18 @@ CREATE OR REPLACE SEMANTIC VIEW SV_CLIENT_360
            FROM BANKING_HOL.ANALYTICS.V_CLIENT_ALERTS a
            JOIN BANKING_HOL.ANALYTICS.STG_CUSTOMERS c ON a.CUSTOMER_ID = c.CUSTOMER_ID
            GROUP BY c.RM_NAME ORDER BY open_alerts DESC'
+    ),
+    negative_sentiment_low_success AS (
+      QUESTION 'Which clients have negative sentiment and a success rate below 96%?'
+      SQL 'WITH s AS (SELECT CUSTOMER_ID, AVG(SENTIMENT_SCORE) AS avg_sentiment
+                     FROM BANKING_HOL.ANALYTICS.FEEDBACK_ENRICHED GROUP BY CUSTOMER_ID)
+           SELECT c.CUSTOMER_NAME, ROUND(s.avg_sentiment, 3) AS avg_sentiment,
+                  ROUND(p.SUCCESSFUL_PAYMENTS / NULLIF(p.TOTAL_PAYMENTS, 0) * 100, 1) AS success_rate_pct
+           FROM BANKING_HOL.ANALYTICS.V_CLIENT_PAYMENT_SUMMARY p
+           JOIN BANKING_HOL.ANALYTICS.STG_CUSTOMERS c ON p.CUSTOMER_ID = c.CUSTOMER_ID
+           JOIN s ON s.CUSTOMER_ID = p.CUSTOMER_ID
+           WHERE s.avg_sentiment < 0 AND p.SUCCESSFUL_PAYMENTS / NULLIF(p.TOTAL_PAYMENTS, 0) * 100 < 96
+           ORDER BY success_rate_pct'
     )
   );
 

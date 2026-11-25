@@ -28,7 +28,7 @@ Every attendee does the **shared core**, then follows one pathway. Vignettes are
 | Block | Vignette | Time |
 |---|---|---|
 | A | Run `setup/catchup/core_analytics.sql`, then [DA2 AI SQL on customer feedback](../vignettes/da2_aisql_feedback/) | 45 |
-| B | [DA1 Build a semantic view + Cortex Analyst](../vignettes/da1_semantic_view_analyst/) | 60 |
+| B | [DA1 One trusted answer on client health](../vignettes/da1_semantic_view_analyst/) | 90 |
 | C (stretch) | [DA3 Branch network and spatial analytics](../vignettes/da3_branch_network_geo/) (uses the retail data in `BANKING_HOL.RETAIL`; no catch-up needed) | 45 |
 | C (advanced) | [DA4 Drive-time matrices with OpenRouteService](../vignettes/da4_ors_travel_matrix/) (uses the matrix in `BANKING_HOL.RETAIL`; nothing to install) | 45 |
 | D | [DA5 Customer lifetime value and next-best offers](../vignettes/da5_customer_value/) (catch up: `setup/catchup/ds1_model.sql`, then `setup/catchup/ds4_predictions.sql`) | 30 |
@@ -45,7 +45,7 @@ Every attendee does the **shared core**, then follows one pathway. Vignettes are
 ### AI Builder
 | Block | Vignette | Time |
 |---|---|---|
-| A | Run `setup/catchup/core_analytics.sql`, then [DA1 Build a semantic view + Cortex Analyst](../vignettes/da1_semantic_view_analyst/): every agent in this pathway uses the `SV_CLIENT_360` you build | 60 |
+| A | Run `setup/catchup/core_analytics.sql`, then [DA1 One trusted answer on client health](../vignettes/da1_semantic_view_analyst/): every agent in this pathway uses the `SV_CLIENT_360` you build | 90 |
 | A | [AI1 Agent with custom tools](../vignettes/ai1_agent_tools/) | 45 |
 | B | [AI3 Marketplace knowledge extension](../vignettes/ai3_knowledge_extension/) | 30 |
 | B | [AI2 Snowflake-managed MCP server](../vignettes/ai2_mcp_server/) (needs OPS1's agent: run `ops1.sql`, shown on the AI2 page, first) | 30 |

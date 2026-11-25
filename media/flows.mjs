@@ -238,8 +238,11 @@ export const analystDatabase = async (page) => {
   }
   const picker = page.getByText(/^(No Database selected|BANKING_HOL)$/).last()
   await clickWithHighlight(picker)
-  // the lists load slowly; BANKING_HOL is usually ticked already, so only its schema is picked
+  // the lists load slowly; on a new account nothing is ticked, so pick BANKING_HOL first
   const schema = page.getByText("ANALYTICS", { exact: true }).locator("visible=true").last()
+  if (!(await schema.waitFor({ timeout: 8_000 }).then(() => true, () => false))) {
+    await clickWithHighlight(page.getByText("BANKING_HOL", { exact: true }).locator("visible=true").last())
+  }
   await schema.waitFor({ timeout: 45_000 })
   await clickWithHighlight(schema)
   await pause(page, 4000)
@@ -371,4 +374,50 @@ export function dashboardShareRun(fileBase) {
     await page.keyboard.press("Escape")
     await pause(page, 600)
   }
+}
+
+// Analyst > semantic view > "Open semantic view in Workspaces": pick a workspace in its dropdown
+// (it starts on My Workspace), highlight Open, then Cancel so no extra linked file is made.
+export const analystOpenIn = (workspace) => async (page) => {
+  const dlg = page.getByRole("dialog").filter({ hasText: "Open semantic view in Workspaces" })
+  await dlg.waitFor({ timeout: 30_000 })
+  await pause(page, 800)
+  await clickWithHighlight(dlg.getByRole("button", { name: /^(My Workspace|banking-hol-pack)/ }).first())
+  await pause(page, 800)
+  await clickWithHighlight(page.getByRole("option", { name: new RegExp(`^${workspace}`) }).first())
+  await pause(page, 800)
+  await highlight(dlg.getByRole("button", { name: "Open", exact: true }), 1800)
+  await dlg.getByRole("button", { name: "Cancel", exact: true }).click()
+}
+
+// Semantic Studio: open <svFile> (e.g. "SV_CLIENT_360") from cortex_project/ in banking-hol-pack,
+// close the one-off notices, then run `act(page, ws)` on camera. The .sv.yaml was created by
+// opening the view from AI > Analyst once (da1_analyst highlights that, so do it by hand first).
+// Never presses Run, Save, Deploy or Run evaluation: actions highlight them, then cancel.
+export function semanticStudioRun(svFile, act) {
+  return async ({ page, mark }) => {
+    const ws = workspaceFrame(page)
+    await switchTo(page, "Home")
+    await openWorkspace(page)
+    await closeAllTabs(page)
+    const file = ws.getByRole("treeitem", { name: new RegExp(`^${svFile}\\.sv\\.yaml`) })
+    if (!(await file.isVisible().catch(() => false)))
+      await ws.getByRole("treeitem", { name: "cortex_project", exact: true }).click()
+    await file.click()
+    await ws.getByRole("radio", { name: "Diagram" }).waitFor({ timeout: 60_000 })
+    for (const n of ["Dismiss", "Close"]) {
+      const b = ws.getByRole("button", { name: n, exact: true }).first()
+      if (await b.isVisible().catch(() => false)) await b.click().catch(() => {})
+    }
+    await ws.getByRole("radio", { name: "Visual" }).click()
+    await pause(page, 2500)
+    mark()
+    await act(page, ws)
+  }
+}
+
+// Semantic Studio side panel tab (Suggestions / Playground / Monitoring / Evaluations)
+export const studioTab = async (page, ws, name) => {
+  await clickWithHighlight(ws.getByRole("tab", { name: new RegExp(`^${name}`) }).first())
+  await pause(page, 2500)
 }

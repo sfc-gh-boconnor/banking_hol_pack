@@ -299,6 +299,15 @@ export const CHECKS: Record<string, Check[]> = {
               BANKING_HOL.ANALYTICS.SV_CLIENT_360 DIMENSIONS clients.rm_name METRICS payments.payment_volume)`,
       hint: "Keep the logical names from the prompt: tables clients and payments, dimension rm_name, metric payment_volume.",
     },
+    {
+      id: "da1_deployed",
+      label: "SV_CLIENT_360 deployed with a SQL generation instruction and a verified query",
+      sql: `SELECT d ILIKE '%ai_sql_generation%' AND d ILIKE '%ai_verified_queries%' AS OK,
+                   IFF(d ILIKE '%ai_sql_generation%', 'instruction set', 'no SQL generation instruction') || ', ' ||
+                   IFF(d ILIKE '%ai_verified_queries%', 'verified queries found', 'no verified queries') AS DETAIL
+            FROM (SELECT GET_DDL('SEMANTIC_VIEW', 'BANKING_HOL.ANALYTICS.SV_CLIENT_360') AS d)`,
+      hint: "In Semantic Studio: add the SQL generation rules under Custom instructions, save a checked Playground answer as a verified query, then press Deploy. Changes in the .sv.yaml file only reach the live view when you deploy.",
+    },
   ],
   DA2: [
     {

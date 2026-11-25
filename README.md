@@ -42,7 +42,7 @@ docs/           data model, ERD and column dictionary
 | [DE3](vignettes/de3_realtime_payments/) | Real-time payments: Snowflake Postgres streamed to Iceberg with Data Mirroring, interactive warehouse, incident detection | Data Engineer | 45 |
 | [DE4](vignettes/de4_spark_on_snowflake/) | Spark on Snowflake: a PySpark bronze-silver-gold pipeline (CDC, quarantine, reconciliation) run interactively and as a scheduled batch job, monitored in Monitoring > Spark, with a failed-job alert | Data Engineer | 40 |
 | [DA0](vignettes/da0_interactive_report/) | Interactive payments report with Cortex Code, refreshed by an automation | Data Analyst | 30 |
-| [DA1](vignettes/da1_semantic_view_analyst/) | Build a semantic view + Cortex Analyst | Data Analyst | 60 |
+| [DA1](vignettes/da1_semantic_view_analyst/) | One trusted answer on client health (semantic view) | Data Analyst | 90 |
 | [DA2](vignettes/da2_aisql_feedback/) | AI SQL on customer feedback (sentiment, AI_AGG themes per RM) | Data Analyst | 45 |
 | [DA3](vignettes/da3_branch_network_geo/) | Retail branch network: spatial SQL, H3, closure impact, semantic view and agent | Data Analyst | 45 |
 | [OPS1](vignettes/ops1_payments_360_agent/) | Corporate Payments 360 agent in Snowflake CoWork | Payments Ops | 45 |
