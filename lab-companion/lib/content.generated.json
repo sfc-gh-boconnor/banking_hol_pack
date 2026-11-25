@@ -587,7 +587,7 @@
      "prompt": "Using the payments, accounts, customers, relationship managers and feedback tables in BANKING_HOL.RAW_DATA, build an interactive HTML report of corporate payments health. Show headline figures, a monthly trend, a breakdown by payment type, and a sortable table of clients with their RM, failed payments and feedback. Let me filter by payment type, region and channel. Brand it as a UK bank (navy and cyan, red for failures). My role is read-only. Preview it and give me the link.",
      "sql": "",
      "expect": "Cortex Code explores the tables, builds the report and gives you a preview link",
-     "checkId": "",
+     "checkId": "da0_report",
      "pasteInto": "the **How can I help?** box in the **CoCo** tab",
      "media": "da0_new_session.mp4",
      "mediaCaption": "CoCo > New session, then paste the report prompt"
@@ -609,7 +609,7 @@
      "prompt": "Set up a daily Cortex Code automation called PAYMENTS_REPORT_REFRESH that runs at 07:00 Europe/London. Each run: re-run the queries behind the interactive payments report we just built, rebuild the same report with today's data, check the totals against BANKING_HOL.RAW_DATA, and save it in the same place with today's date in the definitions section. It runs unattended, so it must not ask questions and must stay read-only. Create it paused, run it once now so I can see the result, then start the schedule.",
      "sql": "",
      "expect": "Cortex Code summarises the automation, creates it paused, runs it once and shows the rebuilt report, then asks before starting the schedule. Each run uses your default role (`HOL_PARTICIPANT`).",
-     "checkId": "",
+     "checkId": "da0_automation",
      "pasteInto": "the **How can I help?** box in the **CoCo** tab",
      "media": "da0_automations.mp4",
      "mediaCaption": "Your automations live under CoCo > Automations"
@@ -658,9 +658,9 @@
     },
     {
      "title": "Write the bank's definitions once",
-     "body": "- **Success rate** is now defined once: successful over total payments for the client, not an average of averages.\n- **Synonyms** mean \"RM\", \"banker\" and \"relationship manager\" all find the same person.",
-     "where": "banking-hol-pack Workspace > **+ > Semantic view**, or the Cortex Code sidebar",
-     "prompt": "Create a semantic view BANKING_HOL.ANALYTICS.SV_CLIENT_360 with four logical tables: clients (STG_CUSTOMERS, key CUSTOMER_ID), payments (V_CLIENT_PAYMENT_SUMMARY, key CUSTOMER_ID), feedback (FEEDBACK_ENRICHED, key FEEDBACK_ID) and alerts (V_CLIENT_ALERTS, key ALERT_ID), with payments, feedback and alerts each related to clients on CUSTOMER_ID. Add dimensions including clients.customer_name, clients.sector, clients.rm_name (synonyms \"relationship manager\", \"RM\") and feedback.sentiment_label, and metrics including payments.payment_volume (sum of total volume GBP), payments.success_rate_pct, feedback.avg_sentiment, alerts.open_alert_count (status not RESOLVED) and alerts.critical_alert_count. Add business comments and synonyms, then deploy it.",
+     "body": "1. Click **+ Add new > Semantic view** and name the file `sv_client_360`.\n2. Cortex Code opens beside it with its own starter, \"Help me create a semantic view\", and a **Questions** card asking which source tables to use. Click **Cancel** on the card.\n3. Paste the brief below into the same Cortex Code chat. It names every table and key, so there's nothing left to ask.\n4. Press **Allow** on each **Run this command?** card.\n**Important:** if Cortex Code still asks about sources, don't pick the RAW_DATA tables or the staging list it suggests. Choose **Other...** and reply \"Use exactly the four tables in my brief\".\n- **Success rate** is now defined once: successful over total payments for the client, not an average of averages.\n- **Synonyms** mean \"RM\", \"banker\" and \"relationship manager\" all find the same person.",
+     "where": "banking-hol-pack Workspace > **+ Add new > Semantic view**",
+     "prompt": "Create a semantic view BANKING_HOL.ANALYTICS.SV_CLIENT_360 with four logical tables: clients (STG_CUSTOMERS, key CUSTOMER_ID), payments (V_CLIENT_PAYMENT_SUMMARY, key CUSTOMER_ID), feedback (FEEDBACK_ENRICHED, key FEEDBACK_ID) and alerts (V_CLIENT_ALERTS, key ALERT_ID), with payments, feedback and alerts each related to clients on CUSTOMER_ID. Add dimensions including clients.customer_name, clients.sector, clients.rm_name (synonyms \"relationship manager\", \"RM\") and feedback.sentiment_label, and metrics including payments.payment_volume (sum of total volume GBP), payments.success_rate_pct, feedback.avg_sentiment, alerts.open_alert_count (status not RESOLVED) and alerts.critical_alert_count. Add business comments and synonyms, then deploy it. Use exactly these four tables and names, and don't ask me which sources to use.",
      "sql": "",
      "expect": "`SV_CLIENT_360` exists. Keep the logical names `clients`, `payments`, `rm_name` and `payment_volume`: the check queries them.",
      "checkId": "da1_semantic_view",
@@ -1092,8 +1092,8 @@
      "where": "the same SQL file",
      "prompt": "",
      "sql": "CREATE OR REPLACE TABLE MY_CLOSURE_LOOKUP AS\nWITH d AS (SELECT t.H3_CELL, t.BRANCH_ID, b.CITY, t.DURATION_S / 60 AS MINS,\n                  ROW_NUMBER() OVER (PARTITION BY t.H3_CELL ORDER BY t.DURATION_S) AS RANK\n           FROM BANKING_HOL.RETAIL.BRANCH_CELL_TRAVEL t JOIN BANKING_HOL.RETAIL.BRANCHES b USING (BRANCH_ID)\n           WHERE t.PROFILE = 'driving-car')\nSELECT H3_CELL, ANY_VALUE(CITY) AS CITY,\n       MAX(IFF(RANK = 1, BRANCH_ID, NULL)) AS NEAREST_BRANCH,\n       MAX(IFF(RANK = 1, MINS, NULL)) AS NEAREST_MIN,\n       MAX(IFF(RANK = 2, BRANCH_ID, NULL)) AS NEXT_BRANCH,\n       MAX(IFF(RANK = 2, MINS, NULL)) AS NEXT_MIN\nFROM d GROUP BY 1;",
-     "expect": "",
-     "checkId": "",
+     "expect": "one row for each of about 12,400 neighbourhoods, with its nearest branch and the one customers would drive to if it closed",
+     "checkId": "da4_lookup",
      "pasteInto": ""
     },
     {
@@ -1103,7 +1103,7 @@
      "prompt": "Using BANKING_HOL.ANALYTICS.MY_CLOSURE_LOOKUP, add a Streamlit page with a pydeck H3HexagonLayer for one city, coloured by NEXT_MIN - NEAREST_MIN (the extra drive if the nearest branch closed), with the branches as points and a tooltip showing both branches and both times.",
      "sql": "SELECT l.NEAREST_BRANCH, b.BRANCH_NAME, COUNT(c.CUSTOMER_ID) AS CUSTOMERS,\n       COUNT_IF(c.CUSTOMER_ID IS NOT NULL AND l.NEAREST_MIN <= 20 AND COALESCE(l.NEXT_MIN, 999) > 20) AS CUSTOMERS_CUT_OFF,\n       ROUND(AVG(l.NEXT_MIN - l.NEAREST_MIN), 1) AS AVG_EXTRA_MIN\nFROM MY_CLOSURE_LOOKUP l\nJOIN BANKING_HOL.RETAIL.BRANCHES b ON b.BRANCH_ID = l.NEAREST_BRANCH\nLEFT JOIN BANKING_HOL.RAW_DATA.RB_CUSTOMERS c ON H3_LATLNG_TO_CELL_STRING(c.HOME_LAT, c.HOME_LON, 8) = l.H3_CELL\nGROUP BY 1, 2 ORDER BY CUSTOMERS_CUT_OFF DESC LIMIT 10;",
      "expect": "a few branches stand out, such as Birmingham West Bromwich, where a closure would leave around 300 customers more than 20 minutes from a branch.",
-     "checkId": "",
+     "checkId": "da4_cut_off",
      "pasteInto": ""
     },
     {

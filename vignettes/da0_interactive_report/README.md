@@ -26,6 +26,7 @@ Using the payments, accounts, customers, relationship managers and feedback tabl
 ```
 Paste: the **How can I help?** box in the **CoCo** tab
 Expect: Cortex Code explores the tables, builds the report and gives you a preview link
+Check: da0_report
 
 ### Make it yours
 Where: the same CoCo session
@@ -54,6 +55,7 @@ Set up a daily Cortex Code automation called PAYMENTS_REPORT_REFRESH that runs a
 ```
 Paste: the **How can I help?** box in the **CoCo** tab
 Expect: Cortex Code summarises the automation, creates it paused, runs it once and shows the rebuilt report, then asks before starting the schedule. Each run uses your default role (`HOL_PARTICIPANT`).
+Check: da0_automation
 
 ## Check your work
 Your report preview opens, filters change the headline figures, and **Reset** brings them back to 50,000 payments.

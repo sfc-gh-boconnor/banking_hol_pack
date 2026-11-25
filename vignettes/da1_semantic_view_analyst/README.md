@@ -39,10 +39,15 @@ Expect: two views, with one row per client in the payment summary
 These views are a contract: if the source systems change, you fix one view, and every RM question keeps working.
 
 ### Write the bank's definitions once
-Where: banking-hol-pack Workspace > **+ > Semantic view**, or the Cortex Code sidebar
+Where: banking-hol-pack Workspace > **+ Add new > Semantic view**
 Media: da1_create_sv.mp4 | + Add new > Semantic view > name it sv_client_360, then paste the brief into the Cortex Code panel
+1. Click **+ Add new > Semantic view** and name the file `sv_client_360`.
+2. Cortex Code opens beside it with its own starter, "Help me create a semantic view", and a **Questions** card asking which source tables to use. Click **Cancel** on the card.
+3. Paste the brief below into the same Cortex Code chat. It names every table and key, so there's nothing left to ask.
+4. Press **Allow** on each **Run this command?** card.
+**Important:** if Cortex Code still asks about sources, don't pick the RAW_DATA tables or the staging list it suggests. Choose **Other...** and reply "Use exactly the four tables in my brief".
 ```prompt
-Create a semantic view BANKING_HOL.ANALYTICS.SV_CLIENT_360 with four logical tables: clients (STG_CUSTOMERS, key CUSTOMER_ID), payments (V_CLIENT_PAYMENT_SUMMARY, key CUSTOMER_ID), feedback (FEEDBACK_ENRICHED, key FEEDBACK_ID) and alerts (V_CLIENT_ALERTS, key ALERT_ID), with payments, feedback and alerts each related to clients on CUSTOMER_ID. Add dimensions including clients.customer_name, clients.sector, clients.rm_name (synonyms "relationship manager", "RM") and feedback.sentiment_label, and metrics including payments.payment_volume (sum of total volume GBP), payments.success_rate_pct, feedback.avg_sentiment, alerts.open_alert_count (status not RESOLVED) and alerts.critical_alert_count. Add business comments and synonyms, then deploy it.
+Create a semantic view BANKING_HOL.ANALYTICS.SV_CLIENT_360 with four logical tables: clients (STG_CUSTOMERS, key CUSTOMER_ID), payments (V_CLIENT_PAYMENT_SUMMARY, key CUSTOMER_ID), feedback (FEEDBACK_ENRICHED, key FEEDBACK_ID) and alerts (V_CLIENT_ALERTS, key ALERT_ID), with payments, feedback and alerts each related to clients on CUSTOMER_ID. Add dimensions including clients.customer_name, clients.sector, clients.rm_name (synonyms "relationship manager", "RM") and feedback.sentiment_label, and metrics including payments.payment_volume (sum of total volume GBP), payments.success_rate_pct, feedback.avg_sentiment, alerts.open_alert_count (status not RESOLVED) and alerts.critical_alert_count. Add business comments and synonyms, then deploy it. Use exactly these four tables and names, and don't ask me which sources to use.
 ```
 Expect: `SV_CLIENT_360` exists. Keep the logical names `clients`, `payments`, `rm_name` and `payment_volume`: the check queries them.
 Check: da1_semantic_view

@@ -326,6 +326,45 @@ export const CHECKS: Record<string, Check[]> = {
       hint: "Paste the AI_AGG themes prompt into Cortex Code.",
     },
   ],
+  DA0: [
+    {
+      id: "da0_report",
+      // the report itself is a Cortex Code artifact with no SQL view, so check the queries behind it
+      label: "Cortex Code queried payments and client feedback to build your report",
+      sql: `SELECT COUNT_IF(QUERY_TEXT ILIKE '%PAYMENTS%' AND QUERY_TEXT ILIKE '%CUSTOMERS%') > 0 AND COUNT_IF(QUERY_TEXT ILIKE '%CUSTOMER_FEEDBACK%') > 0 AS OK,
+                   COUNT_IF(QUERY_TEXT ILIKE '%BANKING_HOL.RAW_DATA%') || ' of your recent queries read the corporate payments data' AS DETAIL
+            FROM TABLE(BANKING_HOL.INFORMATION_SCHEMA.QUERY_HISTORY_BY_USER(USER_NAME => ?, RESULT_LIMIT => 1000))
+            WHERE EXECUTION_STATUS = 'SUCCESS' AND START_TIME > DATEADD('day', -2, CURRENT_TIMESTAMP())`,
+      hint: "Paste the report prompt into the CoCo tab and press Allow on each Run this command? card, so Cortex Code can query the payments, customers and feedback tables.",
+      byUser: true,
+    },
+    {
+      id: "da0_automation",
+      label: "Daily Cortex Code automation rebuilds the report",
+      sql: `SHOW AGENT TASKS LIKE 'COCO_ROUTINE_%' IN SCHEMA "USER$".PUBLIC ->> SELECT COUNT(*) > 0 AS OK, COALESCE(NULLIF(LISTAGG("name" || ' (' || "state" || ')', ', '), ''), 'no Cortex Code automation yet') AS DETAIL FROM $1`,
+      hint: "Paste the PAYMENTS_REPORT_REFRESH prompt into the same CoCo session and say yes when it offers to create the automation.",
+    },
+  ],
+  DA4: [
+    {
+      id: "da4_lookup",
+      label: "MY_CLOSURE_LOOKUP has the nearest and next-nearest branch for every neighbourhood",
+      sql: `SELECT COUNT(*) >= 12000 AND COUNT(NEXT_MIN) >= COUNT(*) * 0.95 AS OK,
+                   COUNT(*) || ' neighbourhoods, median ' || ROUND(MEDIAN(NEAREST_MIN), 1) || ' min to the nearest branch, ' || ROUND(MEDIAN(NEXT_MIN - NEAREST_MIN), 1) || ' min extra if it closed' AS DETAIL
+            FROM BANKING_HOL.ANALYTICS.MY_CLOSURE_LOOKUP`,
+      hint: "Run the CREATE TABLE MY_CLOSURE_LOOKUP statement in Build the closure lookup, with USE SCHEMA BANKING_HOL.ANALYTICS from the first step.",
+    },
+    {
+      id: "da4_cut_off",
+      label: "You counted the customers a branch closure would cut off",
+      sql: `SELECT COUNT_IF(QUERY_TEXT ILIKE '%MY_CLOSURE_LOOKUP%' AND QUERY_TEXT ILIKE '%RB_CUSTOMERS%') > 0 AS OK,
+                   IFF(COUNT_IF(QUERY_TEXT ILIKE '%MY_CLOSURE_LOOKUP%' AND QUERY_TEXT ILIKE '%RB_CUSTOMERS%') > 0, 'customers placed on the closure lookup', 'not run yet') AS DETAIL
+            FROM TABLE(BANKING_HOL.INFORMATION_SCHEMA.QUERY_HISTORY_BY_USER(USER_NAME => ?, RESULT_LIMIT => 1000))
+            WHERE EXECUTION_STATUS = 'SUCCESS' AND START_TIME > DATEADD('day', -2, CURRENT_TIMESTAMP())`,
+      hint: "Run the query in Which closures cut customers off: it joins MY_CLOSURE_LOOKUP to RB_CUSTOMERS.",
+      byUser: true,
+    },
+  ],
   DA3: [
     {
       id: "da3_catchment",

@@ -65,6 +65,8 @@ SELECT H3_CELL, ANY_VALUE(CITY) AS CITY,
        MAX(IFF(RANK = 2, MINS, NULL)) AS NEXT_MIN
 FROM d GROUP BY 1;
 ```
+Expect: one row for each of about 12,400 neighbourhoods, with its nearest branch and the one customers would drive to if it closed
+Check: da4_lookup
 
 ### Which closures cut customers off
 Where: the same SQL file
@@ -79,6 +81,7 @@ LEFT JOIN BANKING_HOL.RAW_DATA.RB_CUSTOMERS c ON H3_LATLNG_TO_CELL_STRING(c.HOME
 GROUP BY 1, 2 ORDER BY CUSTOMERS_CUT_OFF DESC LIMIT 10;
 ```
 Expect: a few branches stand out, such as Birmingham West Bromwich, where a closure would leave around 300 customers more than 20 minutes from a branch.
+Check: da4_cut_off
 2. Ask Cortex Code to map it:
 ```prompt
 Using BANKING_HOL.ANALYTICS.MY_CLOSURE_LOOKUP, add a Streamlit page with a pydeck H3HexagonLayer for one city, coloured by NEXT_MIN - NEAREST_MIN (the extra drive if the nearest branch closed), with the branches as points and a tooltip showing both branches and both times.
