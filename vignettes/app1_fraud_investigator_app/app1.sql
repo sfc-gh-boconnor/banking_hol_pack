@@ -10,8 +10,10 @@ USE SCHEMA BANKING_HOL.APPS;
 
 -- 1. Upload the two files from this folder to a stage (Snowsight: Data > Add data, or snow stage copy)
 CREATE STAGE IF NOT EXISTS APP1_SOURCE COMMENT = 'APP1: fraud investigator app source';
--- PUT file://streamlit_app.py @APP1_SOURCE AUTO_COMPRESS = FALSE OVERWRITE = TRUE;
--- PUT file://pyproject.toml   @APP1_SOURCE AUTO_COMPRESS = FALSE OVERWRITE = TRUE;
+-- From the lab repository (or upload them: PUT file://streamlit_app.py @APP1_SOURCE AUTO_COMPRESS = FALSE OVERWRITE = TRUE;)
+COPY FILES INTO @APP1_SOURCE
+  FROM @BANKING_HOL_SETUP.PUBLIC.HOL_REPO/branches/main/vignettes/app1_fraud_investigator_app/
+  FILES = ('streamlit_app.py', 'pyproject.toml');
 
 -- 2. Create the app on the container runtime and publish it
 CREATE OR REPLACE STREAMLIT FRAUD_INVESTIGATOR

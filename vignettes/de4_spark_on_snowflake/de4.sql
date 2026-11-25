@@ -61,16 +61,24 @@ ALTER TASK PAYMENTS_NIGHTLY_SPARK RESUME;
 -- DE4.6 Break it: upstream renamed the feed. The run fails, and the error
 -- is in Monitoring > Spark > Batch Jobs (and CODE_BUNDLE_HISTORY).
 -- -----------------------------------------------------
-EXECUTE CODE BUNDLE FROM '@BANKING_HOL_SETUP.PUBLIC.HOL_REPO/branches/main/vignettes/de4_spark_on_snowflake'
-  ENTRYPOINT = 'de4_pipeline.py'
-  ARGUMENTS = ('--schema', 'BANKING_HOL.SPARK_LAB', '--source', 'PAYMENT_STATUS_UPDATES_V2', '--app-name', 'payments_nightly_broken')
-  EXECUTION_NAME = 'payments_nightly_broken'
-  WITH SPECIFICATION $$
+-- (wrapped so the expected failure doesn't stop the rest of this file; the reason is returned)
+EXECUTE IMMEDIATE $$
+BEGIN
+  EXECUTE CODE BUNDLE FROM '@BANKING_HOL_SETUP.PUBLIC.HOL_REPO/branches/main/vignettes/de4_spark_on_snowflake'
+    ENTRYPOINT = 'de4_pipeline.py'
+    ARGUMENTS = ('--schema', 'BANKING_HOL.SPARK_LAB', '--source', 'PAYMENT_STATUS_UPDATES_V2', '--app-name', 'payments_nightly_broken')
+    EXECUTION_NAME = 'payments_nightly_broken'
+    WITH SPECIFICATION '
 bundle:
   type: spark
   compute_type: warehouse
   language: python
   compute_options: {}
+';
+  RETURN 'Unexpected: the broken run succeeded';
+EXCEPTION
+  WHEN OTHER THEN RETURN 'Failed as intended: ' || LEFT(SQLERRM, 300);
+END;
 $$;
 
 -- -----------------------------------------------------

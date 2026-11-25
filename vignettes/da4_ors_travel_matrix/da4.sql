@@ -54,49 +54,51 @@ SELECT COUNT(DISTINCT H3_7) AS RES7_CELLS, (SELECT COUNT(*) FROM MY_CLOSURE_LOOK
 FROM (SELECT H3_7, MAX(NEAREST_MIN) - MIN(NEAREST_MIN) AS SPREAD FROM r7 GROUP BY 1);
 
 -- =====================================================
+-- APPENDIX (optional, admin; commented out so this file runs without the ORS app:
+-- uncomment it once OPENROUTESERVICE_APP is installed)
 -- APPENDIX (optional, admin): build the matrix yourself with the OpenRouteService engine.
 -- Needs OPENROUTESERVICE_APP installed with a 'Manchester' region (README: How the matrix
 -- was built). Tested on a Manchester region: matches BRANCH_CELL_TRAVEL to 0.03 minutes.
 -- =====================================================
 -- CREATE OR REPLACE TABLE MY_BRANCH_CELLS AS
-SELECT DISTINCT c.value::STRING AS H3_CELL,
-       ST_X(H3_CELL_TO_POINT(c.value::STRING)) AS LON,
-       ST_Y(H3_CELL_TO_POINT(c.value::STRING)) AS LAT
-FROM BANKING_HOL.RETAIL.BRANCHES b,
-     LATERAL FLATTEN(H3_GRID_DISK(H3_LATLNG_TO_CELL_STRING(b.LAT, b.LON, 8), 6)) c
-WHERE b.CITY = 'Manchester';
-SELECT COUNT(*) AS CELLS FROM MY_BRANCH_CELLS;
+-- SELECT DISTINCT c.value::STRING AS H3_CELL,
+--        ST_X(H3_CELL_TO_POINT(c.value::STRING)) AS LON,
+--        ST_Y(H3_CELL_TO_POINT(c.value::STRING)) AS LAT
+-- FROM BANKING_HOL.RETAIL.BRANCHES b,
+--      LATERAL FLATTEN(H3_GRID_DISK(H3_LATLNG_TO_CELL_STRING(b.LAT, b.LON, 8), 6)) c
+-- WHERE b.CITY = 'Manchester';
+-- SELECT COUNT(*) AS CELLS FROM MY_BRANCH_CELLS;
 
 -- CREATE OR REPLACE TABLE MY_MATRIX_RAW AS
-WITH br AS (SELECT ARRAY_AGG([LON, LAT]) WITHIN GROUP (ORDER BY BRANCH_ID) AS LOCS, COUNT(*) AS N
-            FROM BANKING_HOL.RETAIL.BRANCHES WHERE CITY = 'Manchester'),
-ce AS (SELECT H3_CELL, LON, LAT, ROW_NUMBER() OVER (ORDER BY H3_CELL) - 1 AS K FROM MY_BRANCH_CELLS),
-calls AS (
-    SELECT FLOOR(K / 400) AS BATCH,
-           ARRAY_AGG([LON, LAT]) WITHIN GROUP (ORDER BY K) AS LOCS,
-           ARRAY_AGG(H3_CELL) WITHIN GROUP (ORDER BY K) AS CELLS
-    FROM ce GROUP BY 1)
-SELECT c.BATCH, c.CELLS,
-       OPENROUTESERVICE_APP.CORE.MATRIX('driving-car', OBJECT_CONSTRUCT(
-           'locations', ARRAY_CAT(br.LOCS, c.LOCS),
-           'metrics', ['duration', 'distance'],
-           'sources', ARRAY_GENERATE_RANGE(0, br.N),
-           'destinations', ARRAY_GENERATE_RANGE(br.N, br.N + ARRAY_SIZE(c.LOCS))), 'Manchester') AS M
-FROM calls c, br;
+-- WITH br AS (SELECT ARRAY_AGG([LON, LAT]) WITHIN GROUP (ORDER BY BRANCH_ID) AS LOCS, COUNT(*) AS N
+--             FROM BANKING_HOL.RETAIL.BRANCHES WHERE CITY = 'Manchester'),
+-- ce AS (SELECT H3_CELL, LON, LAT, ROW_NUMBER() OVER (ORDER BY H3_CELL) - 1 AS K FROM MY_BRANCH_CELLS),
+-- calls AS (
+--     SELECT FLOOR(K / 400) AS BATCH,
+--            ARRAY_AGG([LON, LAT]) WITHIN GROUP (ORDER BY K) AS LOCS,
+--            ARRAY_AGG(H3_CELL) WITHIN GROUP (ORDER BY K) AS CELLS
+--     FROM ce GROUP BY 1)
+-- SELECT c.BATCH, c.CELLS,
+--        OPENROUTESERVICE_APP.CORE.MATRIX('driving-car', OBJECT_CONSTRUCT(
+--            'locations', ARRAY_CAT(br.LOCS, c.LOCS),
+--            'metrics', ['duration', 'distance'],
+--            'sources', ARRAY_GENERATE_RANGE(0, br.N),
+--            'destinations', ARRAY_GENERATE_RANGE(br.N, br.N + ARRAY_SIZE(c.LOCS))), 'Manchester') AS M
+-- FROM calls c, br;
 
 -- CREATE OR REPLACE TABLE MY_BRANCH_CELL_TRAVEL AS
-WITH br AS (SELECT BRANCH_ID, ROW_NUMBER() OVER (ORDER BY BRANCH_ID) - 1 AS I
-            FROM BANKING_HOL.RETAIL.BRANCHES WHERE CITY = 'Manchester')
-SELECT br.BRANCH_ID, cell.value::STRING AS H3_CELL,
-       r.M:durations[br.I][cell.index]::FLOAT AS DURATION_S,
-       r.M:distances[br.I][cell.index]::FLOAT AS DISTANCE_M
-FROM MY_MATRIX_RAW r, br, LATERAL FLATTEN(r.CELLS) cell
-WHERE r.M:durations[br.I][cell.index] IS NOT NULL;
-SELECT COUNT(*) AS PAIRS, ROUND(AVG(DURATION_S) / 60, 1) AS AVG_MIN FROM MY_BRANCH_CELL_TRAVEL;
+-- WITH br AS (SELECT BRANCH_ID, ROW_NUMBER() OVER (ORDER BY BRANCH_ID) - 1 AS I
+--             FROM BANKING_HOL.RETAIL.BRANCHES WHERE CITY = 'Manchester')
+-- SELECT br.BRANCH_ID, cell.value::STRING AS H3_CELL,
+--        r.M:durations[br.I][cell.index]::FLOAT AS DURATION_S,
+--        r.M:distances[br.I][cell.index]::FLOAT AS DISTANCE_M
+-- FROM MY_MATRIX_RAW r, br, LATERAL FLATTEN(r.CELLS) cell
+-- WHERE r.M:durations[br.I][cell.index] IS NOT NULL;
+-- SELECT COUNT(*) AS PAIRS, ROUND(AVG(DURATION_S) / 60, 1) AS AVG_MIN FROM MY_BRANCH_CELL_TRAVEL;
 
 -- SELECT COUNT(*) AS PAIRS,
-       ROUND(CORR(m.DURATION_S, l.DURATION_S), 3) AS CORRELATION,
-       ROUND(AVG(ABS(m.DURATION_S - l.DURATION_S)) / 60, 2) AS AVG_DIFF_MIN
-FROM MY_BRANCH_CELL_TRAVEL m
-JOIN BANKING_HOL.RETAIL.BRANCH_CELL_TRAVEL l
-  ON l.BRANCH_ID = m.BRANCH_ID AND l.H3_CELL = m.H3_CELL AND l.PROFILE = 'driving-car';
+--        ROUND(CORR(m.DURATION_S, l.DURATION_S), 3) AS CORRELATION,
+--        ROUND(AVG(ABS(m.DURATION_S - l.DURATION_S)) / 60, 2) AS AVG_DIFF_MIN
+-- FROM MY_BRANCH_CELL_TRAVEL m
+-- JOIN BANKING_HOL.RETAIL.BRANCH_CELL_TRAVEL l
+--   ON l.BRANCH_ID = m.BRANCH_ID AND l.H3_CELL = m.H3_CELL AND l.PROFILE = 'driving-car';
