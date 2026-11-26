@@ -111,8 +111,6 @@ BEGIN
         ARRAY_CONSTRUCT('Copy calls, emails and cases',   'ALL,RETAIL,TEXT,PROVISION', 'COPY FILES INTO @BANKING_HOL.RETAIL.RB_SEED/text/ FROM ' || repo || 'data/retail_text/ PATTERN = ''.*rb_[a-z_]+[.]csv[.]gz'''),
         ARRAY_CONSTRUCT('Copy fraud evidence files',      'ALL,RETAIL,TEXT,PROVISION', 'COPY FILES INTO @BANKING_HOL.RETAIL.FINCRIME_EVIDENCE FROM ' || repo || 'data/retail_text/evidence/'),
         ARRAY_CONSTRUCT('Text tables and ML schema',      'ALL,RETAIL,TEXT,PROVISION', 'EXECUTE IMMEDIATE FROM ' || repo || 'setup/10_retail_text_seed.sql'),
-        -- trains the DS1 and DS4 models once, so the Fast-forward catch-ups copy them instead of training
-        ARRAY_CONSTRUCT('Pre-trained DS1 and DS4 models',  'ALL,RETAIL,PROVISION', 'EXECUTE IMMEDIATE FROM ' || repo || 'setup/10c_ml_reference.sql'),
         ARRAY_CONSTRUCT('Cortex Search lab (AI5)',        'SEARCH',          'EXECUTE IMMEDIATE FROM ' || repo || 'setup/10b_search_lab.sql'),
         ARRAY_CONSTRUCT('Audit pack',                     'PROVISION',       'EXECUTE IMMEDIATE FROM ' || repo || 'setup/06_audit_pack.sql'),
         ARRAY_CONSTRUCT('CoWork pack',                    'PROVISION',       'EXECUTE IMMEDIATE FROM ' || repo || 'setup/09_cowork_pack.sql'),

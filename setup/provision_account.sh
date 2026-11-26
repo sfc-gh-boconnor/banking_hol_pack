@@ -126,6 +126,11 @@ if (( WAIT_ALL )); then
   wait_for "r['STATUS']=='READY'" 3600 "the lab setup"
   echo "  Lab setup READY"
 fi
+# The pre-trained DS1/DS4 models run here, not inside the loader: nested EXECUTE IMMEDIATE
+# FROM loses LAST_QUERY_ID and fails. They need the lab data loaded first.
+step "Waiting for the lab data, then pre-training the DS1 and DS4 models (~15 min)"
+wait_for "r['STATUS']=='READY'" 3600 "the lab setup"
+run_sql setup/10c_ml_reference.sql
 if (( REFERENCE_BUILD )); then
   step "Reference build (catch-up scripts, DA2, OPS1)"
   run_sql setup/catchup/core_analytics.sql
