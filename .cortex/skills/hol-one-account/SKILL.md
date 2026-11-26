@@ -37,24 +37,26 @@ The install runs from the Snowflake CLI, so it needs a user that signs in withou
    CREATE USER IF NOT EXISTS HOL_DEPLOY
      TYPE = SERVICE
      DEFAULT_ROLE = ACCOUNTADMIN
-     DEFAULT_WAREHOUSE = COMPUTE_WH
      COMMENT = 'Banking HOL: installs the lab from the Snowflake CLI';
    GRANT ROLE ACCOUNTADMIN TO USER HOL_DEPLOY;
 
+   -- Authentication policies live in a schema.
+   CREATE DATABASE IF NOT EXISTS HOL_ADMIN_DB;
    -- Service users need a network policy to use a token, unless this policy relaxes it.
-   CREATE AUTHENTICATION POLICY IF NOT EXISTS HOL_DEPLOY_AUTH
+   -- PAT_POLICY settings are separated by spaces or new lines, not commas.
+   CREATE AUTHENTICATION POLICY IF NOT EXISTS HOL_ADMIN_DB.PUBLIC.HOL_DEPLOY_AUTH
      PAT_POLICY = (
-       NETWORK_POLICY_EVALUATION = ENFORCED_NOT_REQUIRED,
+       NETWORK_POLICY_EVALUATION = ENFORCED_NOT_REQUIRED
        REQUIRE_ROLE_RESTRICTION_FOR_SERVICE_USERS = FALSE
      );
-   ALTER USER HOL_DEPLOY SET AUTHENTICATION POLICY HOL_DEPLOY_AUTH;
+   ALTER USER HOL_DEPLOY SET AUTHENTICATION POLICY HOL_ADMIN_DB.PUBLIC.HOL_DEPLOY_AUTH;
 
    ALTER USER HOL_DEPLOY ADD PROGRAMMATIC ACCESS TOKEN HOL_DEPLOY_PAT
      DAYS_TO_EXPIRY = 30
      COMMENT = 'Banking HOL install';
    ```
+   - Show this SQL to the user exactly as written. It has no placeholders to fill in, so don't add any `<...>` values.
    - The last statement shows the token **once**. Tell them to copy it straight away, and not to paste it into the chat.
-   - If `COMPUTE_WH` doesn't exist, use any warehouse they have.
    - If their organisation requires network policies, they can attach one to HOL_DEPLOY instead of using the authentication policy.
 3. **Add the connection.** Ask them to run `! snow connection add` in this chat and answer the prompts:
    - connection name: their choice, for example `hol_trial`;
@@ -64,7 +66,7 @@ The install runs from the Snowflake CLI, so it needs a user that signs in withou
    - password/token: paste the token;
    - role: `ACCOUNTADMIN`.
 4. **Test it.** Run `snow connection test -c <new name>`, and show the account, user and role.
-5. **After the install**, suggest they remove the token with `ALTER USER HOL_DEPLOY REMOVE PROGRAMMATIC ACCESS TOKEN HOL_DEPLOY_PAT;` (or drop the user) if they won't redeploy.
+5. **After the install**, suggest they remove the token with `ALTER USER HOL_DEPLOY REMOVE PROGRAMMATIC ACCESS TOKEN HOL_DEPLOY_PAT;` (or drop the user and `HOL_ADMIN_DB`) if they won't redeploy.
 
 ### 2. Collect details and get approval
 
