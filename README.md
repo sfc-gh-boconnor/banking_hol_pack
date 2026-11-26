@@ -93,9 +93,15 @@ The Iceberg sources, read-only access and Marketplace extension recreate a regul
 ### Start here: install with Cortex Code in Snowsight (no laptop)
 
 1. Sign in to Snowsight as a user with ACCOUNTADMIN.
-2. In a SQL worksheet, run [`START_IN_SNOWSIGHT.sql`](START_IN_SNOWSIGHT.sql). It creates the GitHub API integration `BANKING_HOL_GITHUB`, so Snowsight can read this repository.
-3. **Projects > Workspaces**, open the Workspace dropdown (top left) > **From Git repository**. Use this repository's URL, the API integration `BANKING_HOL_GITHUB`, and **Public repository**.
-4. Open Cortex Code in that Workspace and type `/hol-install`. The skill (`.snowflake/cortex/skills/hol-install/`) checks your role and AI, explains what it installs, waits for your approval, then installs the lab and creates a test attendee.
+2. Connect Cortex Code to GitHub, once per account: **AI & ML > CoCo Admin > GitHub**.
+   - **Enable** GitHub (it creates `CORTEX_CODE_GITHUB_INTEGRATION`, read-only).
+   - **USAGE grants > Manage**: grant it to **ACCOUNTADMIN** (the role you install with).
+   - Connect your own GitHub account when Cortex Code asks.
+   - If Cortex Code can't read the repository, use **Install on GitHub** to install the Cortex Code app on your GitHub account or organisation.
+3. Open Cortex Code from the Snowsight home page and ask: **"Install the hands-on lab from https://github.com/sfc-gh-boconnor/banking_hol_pack using the skill .snowflake/cortex/skills/hol-install/SKILL.md"**.
+4. The skill checks your role and AI, explains what it installs, waits for your approval, then installs the lab and creates a test attendee.
+
+No GitHub connector? Run [`START_IN_SNOWSIGHT.sql`](START_IN_SNOWSIGHT.sql), create a Workspace from this repository (**Projects > Workspaces > From Git repository**, API integration `BANKING_HOL_GITHUB`, **Public repository**), and type `/hol-install` in Cortex Code there.
 
 ### Or: install with Cortex Code Desktop
 

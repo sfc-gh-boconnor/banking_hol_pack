@@ -1,6 +1,6 @@
 ---
 name: hol-install
-description: "Install the Banking HOL lab into the Snowflake account you are signed in to, from Cortex Code in Snowsight (no CLI, laptop or DataOps). Checks the role and AI, gets approval, runs INSTALL.sql, waits for the lab data, pre-trains the reference models and creates a test attendee. Use when someone asks to install or set up the hands-on lab from a Snowsight Workspace created from the banking_hol_pack repository."
+description: "Install the Banking HOL lab into the Snowflake account you are signed in to, from Cortex Code in Snowsight (no CLI, laptop or DataOps). Checks the role and AI, gets approval, runs INSTALL.sql, waits for the lab data, pre-trains the reference models and creates a test attendee. Use when someone asks to install or set up the hands-on lab from Snowsight, either from the home page with the GitHub connector or from a Workspace created from the banking_hol_pack repository."
 ---
 
 # Banking HOL: install from Cortex Code in Snowsight
@@ -9,13 +9,27 @@ Installs the whole lab into **the account you are signed in to**, using SQL only
 
 ## Before this skill
 
-The Workspace must have been created from the public repository. That needs a GitHub API integration, which `START_IN_SNOWSIGHT.sql` creates:
-1. In a SQL worksheet as ACCOUNTADMIN, run `START_IN_SNOWSIGHT.sql` (from the repo's top level).
-2. **Projects > Workspaces**, open the Workspace dropdown (top left) > **From Git repository**.
-3. Repository URL `https://github.com/sfc-gh-boconnor/banking_hol_pack`, API integration `BANKING_HOL_GITHUB`, **Public repository**.
-4. Open Cortex Code in that Workspace and type `/hol-install`.
+Cortex Code needs to read this skill and the lab files from the public repository. Either:
 
-If the user is reading this outside such a Workspace, tell them these four steps and stop.
+**From the Snowsight home page (GitHub connector):**
+1. **AI & ML > CoCo Admin > GitHub**: **Enable**, then **USAGE grants > Manage** and grant it to ACCOUNTADMIN.
+2. Connect your GitHub account when Cortex Code asks. If the repository still can't be read, use **Install on GitHub**.
+3. Ask Cortex Code to follow this file from `https://github.com/sfc-gh-boconnor/banking_hol_pack`.
+
+**From a Workspace (no GitHub connector):**
+1. In a SQL worksheet as ACCOUNTADMIN, run `START_IN_SNOWSIGHT.sql` (from the repo's top level).
+2. **Projects > Workspaces**, open the Workspace dropdown (top left) > **From Git repository**: URL `https://github.com/sfc-gh-boconnor/banking_hol_pack`, API integration `BANKING_HOL_GITHUB`, **Public repository**.
+3. Open Cortex Code in that Workspace and type `/hol-install`.
+
+If Cortex Code can read neither, tell the user these steps and stop.
+
+## Reading the lab files
+
+The workflow below opens `INSTALL.sql` and `setup/10c_ml_reference.sql`. Read them from the Workspace files, or from the repository through the GitHub connector. Once `INSTALL.sql`'s first section has run, you can also read any file with SQL:
+
+```sql
+SELECT $1 FROM @BANKING_HOL_SETUP.PUBLIC.HOL_REPO/branches/main/setup/10c_ml_reference.sql (FILE_FORMAT => (TYPE = CSV FIELD_DELIMITER = NONE RECORD_DELIMITER = NONE ESCAPE_UNENCLOSED_FIELD = NONE));
+```
 
 ## Rules
 
@@ -62,7 +76,7 @@ Then tell the user, in plain words:
 
 ### 3. Run INSTALL.sql
 
-Open `INSTALL.sql` from the Workspace files and run its statements **one by one**, in order:
+Open `INSTALL.sql` and run its statements **one by one**, in order:
 - Each `EXECUTE IMMEDIATE FROM @...` line and each `EXECUTE IMMEDIATE $$ ... $$` block is one statement.
 - Section 5 (the Lab Companion build) takes 2 to 10 minutes. If the SQL tool times out, check with `SELECT VALUE FROM BANKING_HOL.LAB.SETUP_CONFIG WHERE KEY = 'APP_URL';` before running it again.
 - If a statement fails, show the error and stop. Don't skip it.
@@ -83,7 +97,7 @@ SELECT STATUS, STEPS_DONE, STEP_TOTAL, CURRENT_STEP, ERROR_MESSAGE FROM BANKING_
 
 So the DS1 and DS4 Fast-forwards copy a model instead of training one (about 4 minutes).
 
-Open `setup/10c_ml_reference.sql` from the Workspace files and run its statements one by one, including its `USE ROLE` lines. Don't run the whole file with `EXECUTE IMMEDIATE FROM`: nested, its model checks fail.
+Open `setup/10c_ml_reference.sql` and run its statements one by one, including its `USE ROLE` lines. Don't run the whole file with `EXECUTE IMMEDIATE FROM`: nested, its model checks fail.
 
 Then check:
 ```sql
