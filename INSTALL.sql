@@ -120,7 +120,7 @@ $$;
 EXECUTE IMMEDIATE $$
 BEGIN
     CALL BANKING_HOL.LAB.MY_LAB_DEFAULTS(CURRENT_USER(), 'attendee');
-    RETURN 'Your user now signs in as a lab attendee (HOL_PARTICIPANT). Sign out and in again to use it.';
+    RETURN 'Your default role is now HOL_PARTICIPANT. In Snowsight, switch role to HOL_PARTICIPANT (it keeps the role you last picked).';
 EXCEPTION
     WHEN OTHER THEN RETURN 'Your defaults were not changed: ' || SQLERRM;
 END;

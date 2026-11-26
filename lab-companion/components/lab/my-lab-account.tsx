@@ -52,9 +52,9 @@ export function MyLabAccount() {
         {d.attendee ? (
           <>
             <ol className="list-decimal space-y-1 pl-5">
-              <li>Sign out of Snowsight and sign in again, so your new default role is used.</li>
-              <li>Reopen this Lab Companion in a private window: it keeps its own session.</li>
-              <li>For admin work, switch role to <span className="font-semibold">ACCOUNTADMIN</span> in Snowsight. You still have it.</li>
+              <li>In Snowsight, switch role to <span className="font-semibold">HOL_PARTICIPANT</span> (your name at the bottom left &gt; <span className="font-semibold">Switch role</span>). Snowsight keeps the role you last picked, not your default.</li>
+              <li>In each worksheet and notebook, check the role at the top is HOL_PARTICIPANT too.</li>
+              <li>For admin work, switch back to <span className="font-semibold">ACCOUNTADMIN</span>. You still have it.</li>
             </ol>
             <div className="flex flex-wrap gap-2">
               {signIn}
