@@ -12,5 +12,6 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ARGS=("$CONN")
 [[ "${REFERENCE_BUILD:-false}" == "true" ]] && ARGS+=("--with-reference-build")
 
-LAB_START="$EVENT_START_DATETIME" LAB_END="$EVENT_END_DATETIME" \
+# INSTALL_MODE=DATAOPS: attendees get their own users, so the Lab Companion hides "do the lab as yourself"
+INSTALL_MODE=DATAOPS LAB_START="$EVENT_START_DATETIME" LAB_END="$EVENT_END_DATETIME" \
   bash "$ROOT/setup/provision_account.sh" "${ARGS[@]}"

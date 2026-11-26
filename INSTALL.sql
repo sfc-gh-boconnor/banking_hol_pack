@@ -80,9 +80,10 @@ $$;
 
 -- Lab settings: no event times (wake the app on the day with CALL BANKING_HOL.LAB.WAKE_LAB()),
 -- and the Cortex Search lab on (set INCLUDE_SEARCH to FALSE where Search isn't approved)
-DELETE FROM BANKING_HOL.LAB.SETUP_CONFIG WHERE KEY IN ('LAB_START', 'LAB_END', 'WAKE_LEAD_MINUTES', 'INCLUDE_SEARCH', 'SETUP_REQUESTED_AT');
+DELETE FROM BANKING_HOL.LAB.SETUP_CONFIG WHERE KEY IN ('LAB_START', 'LAB_END', 'WAKE_LEAD_MINUTES', 'INCLUDE_SEARCH', 'SETUP_REQUESTED_AT', 'INSTALL_MODE');
 INSERT INTO BANKING_HOL.LAB.SETUP_CONFIG (KEY, VALUE) VALUES
-    ('WAKE_LEAD_MINUTES', '30'), ('INCLUDE_SEARCH', 'TRUE'), ('SETUP_REQUESTED_AT', CURRENT_TIMESTAMP()::VARCHAR);
+    ('WAKE_LEAD_MINUTES', '30'), ('INCLUDE_SEARCH', 'TRUE'), ('SETUP_REQUESTED_AT', CURRENT_TIMESTAMP()::VARCHAR),
+    ('INSTALL_MODE', 'SELF');
 
 -- -----------------------------------------------------
 -- 4. The shared lab Workspace (notebooks and module files)
@@ -111,6 +112,17 @@ EXCEPTION
         INSERT INTO BANKING_HOL.LAB.SETUP_CONFIG (KEY, VALUE) VALUES ('APP_SKIPPED', :reason);
         EXECUTE IMMEDIATE FROM @BANKING_HOL_SETUP.PUBLIC.HOL_REPO/branches/main/setup/15_lab_guide.sql;
         RETURN 'Lab Companion not deployed (this account cannot run Snowflake App Runtime apps): ' || :reason;
+END;
+$$;
+
+-- You do the lab yourself: make your user an attendee (default role HOL_PARTICIPANT, no secondary
+-- roles). This session keeps ACCOUNTADMIN. Switch back any time from the Lab Companion home page.
+EXECUTE IMMEDIATE $$
+BEGIN
+    CALL BANKING_HOL.LAB.MY_LAB_DEFAULTS(CURRENT_USER(), 'attendee');
+    RETURN 'Your user now signs in as a lab attendee (HOL_PARTICIPANT). Sign out and in again to use it.';
+EXCEPTION
+    WHEN OTHER THEN RETURN 'Your defaults were not changed: ' || SQLERRM;
 END;
 $$;
 

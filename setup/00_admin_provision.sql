@@ -500,3 +500,96 @@ $$;
 -- the Lab Companion runs as HOL_ADMIN
 GRANT USAGE ON PROCEDURE BANKING_HOL.LAB.ENSURE_EXTERNAL_ACCESS() TO ROLE HOL_ADMIN;
 CALL BANKING_HOL.LAB.ENSURE_EXTERNAL_ACCESS();
+
+-- -----------------------------------------------------
+-- 0.9 Do the lab as yourself (accounts not provisioned by DataOps)
+-- On a trial or a self-installed account, one person installs and does the lab. This sets their
+-- user up as an attendee: default role HOL_PARTICIPANT, BANKING_WH, BANKING_HOL and no secondary
+-- roles (so masking shows what attendees see), and remembers their old defaults for "switch back".
+-- The Lab Companion calls it for the signed-in user. Only INSTALL_MODE = SELF accounts qualify, so
+-- DataOps events and older accounts never show it; service users are refused too. Owner's rights, as ACCOUNTADMIN, because it alters users.
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS BANKING_HOL.LAB.USER_DEFAULTS_BACKUP (
+    USER_NAME VARCHAR, DEFAULT_ROLE VARCHAR, DEFAULT_WAREHOUSE VARCHAR, DEFAULT_NAMESPACE VARCHAR,
+    DEFAULT_SECONDARY_ROLES VARCHAR, SAVED_AT TIMESTAMP_LTZ DEFAULT CURRENT_TIMESTAMP()
+) COMMENT = 'Defaults a user had before MY_LAB_DEFAULTS made them an attendee';
+
+CREATE OR REPLACE PROCEDURE BANKING_HOL.LAB.MY_LAB_DEFAULTS(FOR_USER VARCHAR, ACTION VARCHAR)
+  RETURNS VARIANT LANGUAGE PYTHON RUNTIME_VERSION = '3.11' PACKAGES = ('snowflake-snowpark-python')
+  HANDLER = 'run'
+  COMMENT = 'status | attendee | restore: make the signed-in installer a lab attendee, or switch back'
+  EXECUTE AS OWNER
+AS $$
+import json
+import re
+
+TABLE = "BANKING_HOL.LAB.USER_DEFAULTS_BACKUP"
+ATTENDEE = {"DEFAULT_ROLE": "HOL_PARTICIPANT", "DEFAULT_WAREHOUSE": "BANKING_WH", "DEFAULT_NAMESPACE": "BANKING_HOL"}
+
+
+def ident(name):
+    return '"' + name.replace('"', '""') + '"'
+
+
+def literal(value):
+    return "'" + value.replace("\\", "\\\\").replace("'", "\\'") + "'"
+
+
+def secondary_sql(value):
+    # DESC USER shows e.g. ["ALL"] or [] ; ALTER USER takes ('ALL') or ()
+    try:
+        roles = json.loads(value) if value else []
+    except ValueError:
+        roles = []
+    return "(" + ", ".join(literal(str(r)) for r in roles) + ")"
+
+
+def run(session, for_user, action):
+    user = (for_user or "").upper()
+    if not re.fullmatch(r"[A-Z0-9_.@-]+", user):
+        raise ValueError("Unknown user")
+    action = (action or "status").lower()
+
+    mode = session.sql("SELECT MAX(VALUE) FROM BANKING_HOL.LAB.SETUP_CONFIG WHERE KEY = 'INSTALL_MODE'").collect()[0][0]
+    desc = {r["property"]: r["value"] for r in session.sql(f"DESC USER {ident(user)}").collect()}
+    roles = {r["role"] for r in session.sql(f"SHOW GRANTS TO USER {ident(user)}").collect()}
+    is_service = (desc.get("TYPE") or "").upper() in ("SERVICE", "LEGACY_SERVICE")
+    admin = bool(roles & {"HOL_ADMIN", "ACCOUNTADMIN"})
+    # only installs that recorded INSTALL_MODE = SELF: DataOps events (and older accounts) never qualify
+    eligible = mode == "SELF" and admin and not is_service
+    attendee = (desc.get("DEFAULT_ROLE") or "").upper() == "HOL_PARTICIPANT"
+    saved = session.sql(f"SELECT COUNT(*) FROM {TABLE} WHERE USER_NAME = ?", params=[user]).collect()[0][0] > 0
+    status = {"eligible": eligible, "attendee": attendee, "can_restore": saved,
+              "default_role": desc.get("DEFAULT_ROLE"), "user": user}
+
+    if action == "status":
+        return status
+    if not eligible:
+        raise ValueError("Only the person who installed the lab can change this, and not on a DataOps event")
+
+    if action == "attendee":
+        if not saved:
+            session.sql(f"INSERT INTO {TABLE} (USER_NAME, DEFAULT_ROLE, DEFAULT_WAREHOUSE, DEFAULT_NAMESPACE, DEFAULT_SECONDARY_ROLES) VALUES (?, ?, ?, ?, ?)",
+                        params=[user, desc.get("DEFAULT_ROLE"), desc.get("DEFAULT_WAREHOUSE"), desc.get("DEFAULT_NAMESPACE"), desc.get("DEFAULT_SECONDARY_ROLES")]).collect()
+        session.sql(f"GRANT ROLE HOL_PARTICIPANT TO USER {ident(user)}").collect()
+        session.sql(f"ALTER USER {ident(user)} SET DEFAULT_ROLE = HOL_PARTICIPANT DEFAULT_WAREHOUSE = BANKING_WH "
+                    f"DEFAULT_NAMESPACE = BANKING_HOL DEFAULT_SECONDARY_ROLES = ()").collect()
+    elif action == "restore":
+        rows = session.sql(f"SELECT DEFAULT_ROLE, DEFAULT_WAREHOUSE, DEFAULT_NAMESPACE, DEFAULT_SECONDARY_ROLES FROM {TABLE} WHERE USER_NAME = ? ORDER BY SAVED_AT LIMIT 1", params=[user]).collect()
+        if not rows:
+            raise ValueError("No saved defaults to switch back to")
+        old = rows[0]
+        for prop, value in (("DEFAULT_ROLE", old[0]), ("DEFAULT_WAREHOUSE", old[1]), ("DEFAULT_NAMESPACE", old[2])):
+            if value and value.lower() != "null":
+                session.sql(f"ALTER USER {ident(user)} SET {prop} = {literal(value)}").collect()
+            else:
+                session.sql(f"ALTER USER {ident(user)} UNSET {prop}").collect()
+        session.sql(f"ALTER USER {ident(user)} SET DEFAULT_SECONDARY_ROLES = {secondary_sql(old[3])}").collect()
+        session.sql(f"DELETE FROM {TABLE} WHERE USER_NAME = ?", params=[user]).collect()
+    else:
+        raise ValueError("Unknown action")
+
+    status.update(run(session, user, "status"))
+    return status
+$$;
+GRANT USAGE ON PROCEDURE BANKING_HOL.LAB.MY_LAB_DEFAULTS(VARCHAR, VARCHAR) TO ROLE HOL_ADMIN;

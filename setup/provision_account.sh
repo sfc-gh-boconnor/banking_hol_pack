@@ -89,6 +89,7 @@ LEAD="${LAB_WAKE_LEAD_MINUTES:-30}"
 SEARCH_FLAG=$([[ "${HOL_ENABLE_SEARCH:-1}" == "1" ]] && echo TRUE || echo FALSE)
 [[ "$SEARCH_FLAG" == "FALSE" ]] && echo "  Cortex Search lab off (HOL_ENABLE_SEARCH=0): AI5 will show as skippable"
 [[ "$LEAD" =~ ^[0-9]+$ ]] || { echo "LAB_WAKE_LEAD_MINUTES must be a whole number"; exit 1; }
+[[ "${INSTALL_MODE:-SELF}" =~ ^(SELF|DATAOPS)$ ]] || { echo "Invalid INSTALL_MODE: '$INSTALL_MODE' (SELF or DATAOPS)"; exit 1; }
 for t in "$LAB_START" "$LAB_END"; do
   [[ -z "$t" || "$t" =~ ^[0-9TZ:.+\ -]+$ ]] || { echo "Invalid lab time: '$t' (expected e.g. 2026-12-01 09:30:00 +00:00)"; exit 1; }
 done
@@ -99,7 +100,8 @@ DELETE FROM BANKING_HOL.LAB.SETUP_CONFIG;
 INSERT INTO BANKING_HOL.LAB.SETUP_CONFIG (KEY, VALUE) VALUES
   ('LAB_START', NULLIF('<% lab_start %>', '')), ('LAB_END', NULLIF('<% lab_end %>', '')),
   ('WAKE_LEAD_MINUTES', '$LEAD'), ('INCLUDE_SEARCH', '$SEARCH_FLAG'),
-  ('SETUP_REQUESTED_AT', CURRENT_TIMESTAMP()::VARCHAR);" > /tmp/hol_start_setup.log 2>&1 \
+  ('SETUP_REQUESTED_AT', CURRENT_TIMESTAMP()::VARCHAR),
+  ('INSTALL_MODE', '${INSTALL_MODE:-SELF}');" > /tmp/hol_start_setup.log 2>&1 \
   && ! grep -q "─ Error" /tmp/hol_start_setup.log \
   || { echo "FAILED: could not record the lab settings (see /tmp/hol_start_setup.log)"; grep -A6 "─ Error" /tmp/hol_start_setup.log | head -10; exit 1; }
 
