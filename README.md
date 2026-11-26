@@ -90,6 +90,16 @@ The Iceberg sources, read-only access and Marketplace extension recreate a regul
 | Needs | A browser. No laptop, CLI or DataOps | Snowflake CLI, or a DataOps event |
 | Wake schedule | `CALL BANKING_HOL.LAB.WAKE_LAB()` on the day | From the event times |
 
+### Start here: install with Cortex Code
+
+1. Clone this repository and open the folder in Cortex Code.
+2. In the chat, ask: **"Install the hands-on lab on my account"**. This runs the `hol-one-account` skill (`.cortex/skills/hol-one-account/`).
+3. The skill asks which Snowflake connection to use. If you don't have one, it walks you through creating a service user with a programmatic access token, then adding it with `snow connection add`.
+4. It asks for a first name and email for a test attendee, explains what will be installed, and waits for your approval.
+5. It builds the lab (about 25 minutes) and creates the test attendee with a one-time password you change at first sign-in. It ends with the Lab Companion URL.
+
+No Cortex Code? Use the one-script install below.
+
 ### Any account (one script)
 
 1. Sign in to Snowsight as a user with ACCOUNTADMIN.

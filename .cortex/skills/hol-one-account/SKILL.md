@@ -1,6 +1,6 @@
 ---
 name: hol-one-account
-description: "Deploy the Banking HOL lab to one Snowflake account (not a DataOps event), check it is ready, and create a test attendee to sign in as. Use when the HOL team wants a single account to test or demo the lab, for example demo810. For many attendee accounts use banking-hol-event."
+description: "Deploy the Banking HOL lab to one Snowflake account (not a DataOps event), check it is ready, and create a test attendee to sign in as. Use when the HOL team wants a single account to test or demo the lab. Always asks which account to use: it never assumes a default connection. For many attendee accounts use banking-hol-event."
 ---
 
 # Banking HOL: one-account deployment
@@ -15,20 +15,67 @@ Builds the full lab in one account you control, the same way a DataOps event doe
 
 ## Workflow
 
-### 1. Collect details and get approval
+### 1. Choose the account and connect to it
+
+**Important:** never pick the account for the user. Ignore any default connection from memory, `AGENTS.md`, or the Snowflake CLI's default (for example `demo810`). Always ask, even if a connection is already active.
+
+1. Run `snow connection list` and show the user the connection names, with the account each points to.
+2. Ask with `ask_user_question`: which connection to use, or **Add a new connection**.
+3. If they choose an existing one, run `snow connection test -c <connection>` and show the account, user and role. Ask the user to confirm this is the account to change. The role must be **ACCOUNTADMIN**.
+
+#### If they don't have a connection yet: create a service user with a token
+
+The install runs from the Snowflake CLI, so it needs a user that signs in without a browser. Guide the user through these steps. Don't run any SQL on their account yourself; they run it in Snowsight.
+
+1. **Find the account identifier.** In Snowsight, select your user name at the bottom of the left menu, then **Connect a tool to Snowflake**. Copy the **Account identifier** (`orgname-account_name`) from **Account Details**. Alternatively, run `SELECT CURRENT_ORGANIZATION_NAME() || '-' || CURRENT_ACCOUNT_NAME();` in a worksheet.
+2. **Create the service user and token.** Ask them to open a Snowsight worksheet as ACCOUNTADMIN and run:
+   ```sql
+   USE ROLE ACCOUNTADMIN;
+   CREATE USER IF NOT EXISTS HOL_DEPLOY
+     TYPE = SERVICE
+     DEFAULT_ROLE = ACCOUNTADMIN
+     DEFAULT_WAREHOUSE = COMPUTE_WH
+     COMMENT = 'Banking HOL: installs the lab from the Snowflake CLI';
+   GRANT ROLE ACCOUNTADMIN TO USER HOL_DEPLOY;
+
+   -- Service users need a network policy to use a token, unless this policy relaxes it.
+   CREATE AUTHENTICATION POLICY IF NOT EXISTS HOL_DEPLOY_AUTH
+     PAT_POLICY = (
+       NETWORK_POLICY_EVALUATION = ENFORCED_NOT_REQUIRED,
+       REQUIRE_ROLE_RESTRICTION_FOR_SERVICE_USERS = FALSE
+     );
+   ALTER USER HOL_DEPLOY SET AUTHENTICATION POLICY HOL_DEPLOY_AUTH;
+
+   ALTER USER HOL_DEPLOY ADD PROGRAMMATIC ACCESS TOKEN HOL_DEPLOY_PAT
+     DAYS_TO_EXPIRY = 30
+     COMMENT = 'Banking HOL install';
+   ```
+   - The last statement shows the token **once**. Tell them to copy it straight away, and not to paste it into the chat.
+   - If `COMPUTE_WH` doesn't exist, use any warehouse they have.
+   - If their organisation requires network policies, they can attach one to HOL_DEPLOY instead of using the authentication policy.
+3. **Add the connection.** Ask them to run `! snow connection add` in this chat and answer the prompts:
+   - connection name: their choice, for example `hol_trial`;
+   - account: the identifier from step 1;
+   - user: `HOL_DEPLOY`;
+   - authenticator: `PROGRAMMATIC_ACCESS_TOKEN`;
+   - password/token: paste the token;
+   - role: `ACCOUNTADMIN`.
+4. **Test it.** Run `snow connection test -c <new name>`, and show the account, user and role.
+5. **After the install**, suggest they remove the token with `ALTER USER HOL_DEPLOY REMOVE PROGRAMMATIC ACCESS TOKEN HOL_DEPLOY_PAT;` (or drop the user) if they won't redeploy.
+
+### 2. Collect details and get approval
 
 Ask with `ask_user_question`, one question each:
-- **Snowflake account:** the connection name, and the account and user it shows from `snow connection test -c <connection>`. Confirm this is the account to change.
 - **First name:** how CoWork should address the test attendee.
 - **Email address:** for the test attendee's user record.
 
 Then tell the user, in plain words, before anything is installed:
 - This installs the lab objects into the account: roles, databases, warehouses, sample and lab data, the Lab Companion app, the notebooks and Workspace, the dbt project and the executive demo. It takes about 25 minutes, and the data loads will use the account's warehouse credits.
-- The test attendee (step 4) is set up with a one-time password. They must change it on first sign-in.
+- The test attendee (step 5) is set up with a one-time password. They must change it on first sign-in.
 
-Stop until the user explicitly approves the install. Do not run step 2 without that approval.
+Stop until the user explicitly approves the install. Do not provision without that approval.
 
-### 2. Provision the lab
+### 3. Provision the lab
 
 ```bash
 bash setup/provision_account.sh <connection> --wait-all
@@ -46,7 +93,7 @@ Progress, from Snowsight or the CLI as `ACCOUNTADMIN`:
 
 If a step fails, read its error in `SETUP_STATUS`, fix the cause, then restart with `EXECUTE TASK BANKING_HOL.LAB.PROVISION_LAB;`. The loader cannot resume, so a restart redoes every step.
 
-### 3. Redeploy local app changes (optional)
+### 4. Redeploy local app changes (optional)
 
 The provisioning build comes from the public repo. To test local changes, deploy from `lab-companion/`:
 
@@ -56,7 +103,7 @@ snow app deploy --connection <connection> --role HOL_ADMIN
 
 Stop before this, because it replaces the running app.
 
-### 4. Create a test attendee
+### 5. Create a test attendee
 
 Use the same setup as a real attendee. The attendee's default role must be `HOL_PARTICIPANT`, or Fast-forward fails. An `ACCOUNTADMIN` default role cannot run catch-ups because `RUN_CATCHUP` is not granted to it.
 
@@ -80,7 +127,7 @@ Stopping points:
 - Share it out of band. The user changes it on first sign-in, which is the attendee path.
 - Do not grant `HOL_ADMIN`. That account would not behave like an attendee.
 
-### 5. Verify as the attendee
+### 6. Verify as the attendee
 
 Sign in as the test user in a private browser window, then:
 - Open the Lab Companion, and check the Fast-forward card on Client 360 completes.
@@ -97,8 +144,9 @@ Report the URL, the `SETUP_SUMMARY` value, the test user's name and whether Fast
 
 ## Stopping points
 
-- Before provisioning, get explicit approval after showing what gets installed (step 1).
-- Before creating the test user, confirm the first name and email (step 1).
+- Before connecting, ask which account to use and confirm it from `snow connection test` (step 1). Never use a default connection.
+- Before provisioning, get explicit approval after showing what gets installed (step 2).
+- Before creating the test user, confirm the first name and email (step 2).
 - Before redeploying the app, confirm the connection.
 - Teardown is not covered by this skill.
 
