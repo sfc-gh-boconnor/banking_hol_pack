@@ -25,10 +25,10 @@ If Cortex Code can read neither, tell the user these steps and stop.
 
 ## Reading the lab files
 
-The workflow below opens `INSTALL.sql` and `setup/10c_ml_reference.sql`. Read them from the Workspace files, or from the repository through the GitHub connector. Once `INSTALL.sql`'s first section has run, you can also read any file with SQL:
+The workflow below opens `INSTALL.sql` and `setup/10c_ml_reference.sql`. Read them from the Workspace files, or from the repository through the GitHub connector. Once `INSTALL.sql` section 2 has run (it creates the `BANKING_HOL.LAB.READ_TEXT_FILE` format), you can also read any file with SQL, one line per row, in order:
 
 ```sql
-SELECT $1 FROM @BANKING_HOL_SETUP.PUBLIC.HOL_REPO/branches/main/setup/10c_ml_reference.sql (FILE_FORMAT => (TYPE = CSV FIELD_DELIMITER = NONE RECORD_DELIMITER = NONE ESCAPE_UNENCLOSED_FIELD = NONE));
+SELECT $1 FROM @BANKING_HOL_SETUP.PUBLIC.HOL_REPO/branches/main/setup/10c_ml_reference.sql (FILE_FORMAT => 'BANKING_HOL.LAB.READ_TEXT_FILE');
 ```
 
 ## Rules

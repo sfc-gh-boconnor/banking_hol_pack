@@ -1,4 +1,5 @@
 import content from "@/lib/content.generated.json"
+import useCasesJson from "@/lib/use-cases.json"
 import { CHECKS } from "@/lib/checks"
 
 /** One step of a module. prompt is pasted into Cortex Code; sql is a small snippet to run. */
@@ -82,119 +83,19 @@ export type UseCase = {
   roles: string[]
   steps: UseCaseStep[]
   demo: { tour: "retail" | "corporate"; stop: string }
+  /** ISO date the use case was added: recent ones show a New badge */
+  addedOn: string
+  /** Sourced reasons it matters now, from the hol-banking-usecases research */
+  whyNow?: { text: string; source: { label: string; url: string }; published: string; read: string }[]
 }
 
-export const USE_CASES: UseCase[] = [
-  {
-    id: "app-scams",
-    title: "Stop APP scams and mule accounts",
-    business: "Retail",
-    question: "Which payments are scams, who is behind them, and which victims should we reimburse first?",
-    outcome: "Unusual payments scored by a model, mule rings traced across victims, each case drafted by AI from the notes, call, police report and phishing screenshot, and outside records matched to customers.",
-    roles: ["Data Scientist", "AI Builder", "Fraud investigator"],
-    steps: [
-      { code: "C0", why: "Tour the retail data: customers, transactions, fraud cases and SARs." },
-      { code: "DS2", why: "Score every outbound payment against the customer's own normal, so investigators see the unusual ones first." },
-      { code: "AI4", why: "Read the case notes, calls, police PDFs and phishing screenshots with AI SQL, and draft a reimbursement decision under the PSR rules." },
-      { code: "AI5", why: "Search cases and SARs in plain English, and match names on outside records to customers despite misspellings." },
-      { code: "GOV1", why: "Mask the account identifiers investigators don't need, before any of this reaches an agent or app." },
-      { code: "GOV5", why: "Protect names, dates of birth, incomes and case notes by what they are, so analysts see banded values and nobody sees what they should not." },
-      { code: "DE5", why: "Catalogue the police reports and phishing screenshots on the stage, and share one case folder with the reviewing team only." },
-    ],
-    demo: { tour: "retail", stop: "money" },
-  },
-  {
-    id: "attrition",
-    title: "Keep the customers worth keeping",
-    business: "Retail",
-    question: "Who is about to leave, why, and where would closing a branch push more of them out?",
-    outcome: "An attrition model in the Model Registry scoring every customer, each customer's lifetime value and value at risk with a next-best offer, the reasons behind each score, what customers say on calls, and the profit at risk if each branch closed.",
-    roles: ["Data Scientist", "Data Analyst", "Retail leadership"],
-    steps: [
-      { code: "C0", why: "Tour the retail data: monthly profit per customer, products, branches and calls." },
-      { code: "DS0", why: "Learn the label, point-in-time features and the leakage traps before training anything." },
-      { code: "DS1", why: "Train, track and register an attrition model, then score every customer." },
-      { code: "DS4", why: "Calibrate the attrition model into real probabilities and predict each customer's margin, tracked and registered." },
-      { code: "DA5", why: "Turn the predictions into lifetime value and value at risk, rank the save list by money, and pick a next-best offer." },
-      { code: "DA6", why: "Compare every branch, neighbourhood and value segment with its city and the UK using level of detail metrics in a semantic view, then ask an agent." },
-      { code: "DA3", why: "Which branches could close, which nearby branches absorb their customers, and how much longer each customer travels." },
-      { code: "DA4", why: "Advanced: turn a real-roads drive-time matrix into the closure lookup behind the demo, and see why hexagon size matters." },
-      { code: "AI4", why: "Find the reasons in customers' own words: savings rates, branch access, service." },
-    ],
-    demo: { tour: "retail", stop: "attrition" },
-  },
-  {
-    id: "branch-value",
-    title: "Compare every branch with its city and the UK",
-    business: "Retail",
-    question: "Which branches and neighbourhoods are worth more or less than their city, and how much of the UK's value at risk sits in each?",
-    outcome: "One semantic view with level of detail metrics, so every branch is compared with its city and the UK the same way in SQL, Semantic Studio, CoWork and Power BI.",
-    roles: ["Data Analyst", "Retail leadership"],
-    steps: [
-      { code: "C0", why: "Tour the retail data: customers, branches and monthly profit." },
-      { code: "DS4", why: "Calibrated attrition and margin predictions for every customer." },
-      { code: "DA5", why: "Lifetime value and value at risk per customer, by segment." },
-      { code: "DA6", why: "Compare each branch and neighbourhood with its city and the UK in one semantic view, then ask an agent." },
-    ],
-    demo: { tour: "retail", stop: "attrition" },
-  },
-  {
-    id: "corporate-360",
-    title: "Corporate client 360 and payment operations",
-    business: "Corporate",
-    question: "Which clients' payments are failing or running slow, what are they telling us, and what should ops do next?",
-    outcome: "Tested, self-refreshing payment data products, a client 360 report and agent for relationship managers, alert triage with AI next actions, and feedback themed by AI SQL.",
-    roles: ["Data Engineer", "Data Analyst", "Payments Ops"],
-    steps: [
-      { code: "C1", why: "Explore the corporate payments data product end to end." },
-      { code: "DE1", why: "Build tested, documented dbt models from the Iceberg sources." },
-      { code: "DA0", why: "A live client 360 report ops and RMs filter themselves, refreshed every morning." },
-      { code: "DA2", why: "One trusted definition of a client's payments health that anyone can question in plain English." },
-      { code: "OPS1", why: "A client 360 agent relationship managers can ask about their own clients." },
-      { code: "OPS2", why: "Triage operations alerts and let AI suggest the next action." },
-      { code: "DA1", why: "Theme and score every piece of client feedback with AI SQL." },
-    ],
-    demo: { tour: "corporate", stop: "clients" },
-  },
-  {
-    id: "safe-ai",
-    title: "Roll out AI safely",
-    business: "Every business",
-    question: "How do we give every team AI on bank data without losing control of PII, access or audit?",
-    outcome: "PII classified, tagged and masked; lineage and access history that prove who saw what; and every AI client governed through one gateway, with agents built on governed data only.",
-    roles: ["Governance", "AI Builder", "Platform team"],
-    steps: [
-      { code: "C1", why: "See the data products the AI will sit on." },
-      { code: "GOV1", why: "Classify, tag, mask and filter PII once, so it's enforced in every tool, agent and app." },
-      { code: "AI1", why: "Build an agent whose tools answer from governed data, not from whatever it can reach." },
-      { code: "GOV5", why: "One masking policy per kind of data, attached to the personal data tag, so a new column is protected the moment it is tagged." },
-      { code: "GOV2", why: "Prove lineage and who accessed what, for audit." },
-      { code: "DE5", why: "One inventory of every stage and registered model, with its owner and who can read it." },
-      { code: "GOV3", why: "Govern every AI client and model through one gateway." },
-    ],
-    demo: { tour: "corporate", stop: "governed" },
-  },
-  {
-    id: "regulation",
-    title: "Prove control to the regulator",
-    business: "Every business",
-    question: "Could we show a regulator, today, that we stay inside impact tolerance, answer data requests on time and know every model we run?",
-    outcome: "An impact tolerance alert that escalates breaches with its own history, a customer's data request answered from tagged personal data with who read it, and a model risk evidence pack from the Model Registry. Each control leaves the evidence behind.",
-    roles: ["Payments Ops", "Governance", "Data Scientist", "Risk and compliance"],
-    steps: [
-      { code: "OPS4", why: "Operational resilience: hold each important business service's impact tolerance as data and escalate a breach with a Snowflake Alert." },
-      { code: "GOV1", why: "Classify, tag and mask personal data once, so the policies follow it everywhere." },
-      { code: "GOV4", why: "UK GDPR: answer a customer's request for their data from the tags, hold back financial crime records, log the due date." },
-      { code: "GOV5", why: "Show the regulator that every personal column is masked by role, with a coverage report that lists any gap." },
-      { code: "GOV2", why: "Prove who accessed what, from access history." },
-      { code: "DE5", why: "Show every model and evidence file the bank holds, who owns it and who can read it." },
-      { code: "DS4", why: "A calibrated challenger to the attrition model, and a margin model with its baseline: evidence for model risk review." },
-      { code: "DS3", why: "Model risk: inventory, validation against real outcomes, champion vs challenger, model card and approval." },
-      { code: "AI4", why: "APP scams and SARs: draft reimbursement decisions and check SAR narratives, with people deciding." },
-    ],
-    demo: { tour: "corporate", stop: "avoid-fine" },
-  },
-]
+/**
+ * Built into the app: the fallback when the account's copy of the repo can't be read.
+ * lib/use-cases.ts reads the same file from the repo at runtime, so installed labs get new
+ * use cases without a redeploy (see setup/00_admin_provision.sql, REFRESH_LAB_CONTENT_TASK).
+ */
+export const BUILT_IN_USE_CASES = useCasesJson as UseCase[]
 
-export const useCaseById = (id: string) => USE_CASES.find((u) => u.id === id)
+/** Built-in only: server pages use getUseCases() from lib/use-cases.ts for the live list. */
+export const builtInUseCaseById = (id: string) => BUILT_IN_USE_CASES.find((u) => u.id === id)
 

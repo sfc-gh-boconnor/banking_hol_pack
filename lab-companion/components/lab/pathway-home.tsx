@@ -36,10 +36,13 @@ const VIEWS: { id: View; label: string; icon: typeof Users }[] = [
 export function PathwayHome({
   pathways,
   useCases,
+  newIds = [],
   modules,
 }: {
   pathways: Record<string, { blurb: string; modules: string[] }>
   useCases: UseCase[]
+  /** use cases to badge as New (worked out on the server) */
+  newIds?: string[]
   modules: ModuleSummary[]
 }) {
   const names = Object.keys(pathways)
@@ -87,7 +90,7 @@ export function PathwayHome({
         ))}
       </div>
 
-      {view === "usecase" && <UseCaseCards useCases={useCases} byCode={byCode} done={done} />}
+      {view === "usecase" && <UseCaseCards useCases={useCases} newIds={newIds} byCode={byCode} done={done} />}
       {view === "leader" && <LeaderCard />}
 
       {view === "role" && (
@@ -147,8 +150,9 @@ export function PathwayHome({
   )
 }
 
-function UseCaseCards({ useCases, byCode, done }: {
+function UseCaseCards({ useCases, newIds, byCode, done }: {
   useCases: UseCase[]
+  newIds: string[]
   byCode: Record<string, ModuleSummary>
   done: (m: ModuleSummary) => { passed: number; total: number }
 }) {
@@ -163,6 +167,7 @@ function UseCaseCards({ useCases, byCode, done }: {
               <CardHeader className="space-y-2">
                 <div className="flex flex-wrap items-center gap-2 text-xs">
                   <Badge variant="secondary">{u.business}</Badge>
+                  {newIds.includes(u.id) && <Badge>New</Badge>}
                   <span className="flex items-center gap-1 text-muted-foreground"><Clock className="h-3 w-3" />{aboutDuration(mins)}</span>
                   {complete > 0 && <Badge variant="success">{complete}/{u.steps.length} done</Badge>}
                 </div>

@@ -98,3 +98,38 @@ $$;
 --                                      '2026-12-01 13:30:00 +00:00'::TIMESTAMP_TZ, 30);
 --   SHOW TASKS LIKE 'LAB_%' IN SCHEMA BANKING_HOL.LAB;
 -- -----------------------------------------------------
+
+-- -----------------------------------------------------
+-- Fresh lab content without a redeploy. The Lab Companion reads its use cases from this account's
+-- copy of the lab repo (lib/use-cases.ts), so new ones published to GitHub appear here the morning
+-- after. The task only fetches the repo; the app picks the file up within 10 minutes.
+-- Freeze content for an event (no changes on the day):
+--   INSERT INTO BANKING_HOL.LAB.SETUP_CONFIG (KEY, VALUE) VALUES ('CONTENT_REFRESH', 'FALSE');
+-- -----------------------------------------------------
+CREATE FILE FORMAT IF NOT EXISTS BANKING_HOL.LAB.JSON_FILE
+    TYPE = JSON STRIP_OUTER_ARRAY = TRUE
+    COMMENT = 'Lab Companion: read JSON content files (one row per array entry) from the lab repo';
+-- Read any text file from the repo with SQL, one line per row (used by the hol-install skill)
+CREATE FILE FORMAT IF NOT EXISTS BANKING_HOL.LAB.READ_TEXT_FILE
+    TYPE = CSV FIELD_DELIMITER = NONE ESCAPE_UNENCLOSED_FIELD = NONE
+    COMMENT = 'Read a text file from the lab repo one line per row';
+GRANT USAGE ON FILE FORMAT BANKING_HOL.LAB.READ_TEXT_FILE TO ROLE HOL_PARTICIPANT;
+
+CREATE OR REPLACE TASK BANKING_HOL.LAB.REFRESH_LAB_CONTENT_TASK
+    SCHEDULE = 'USING CRON 0 5 * * * Europe/London'
+    USER_TASK_MANAGED_INITIAL_WAREHOUSE_SIZE = 'XSMALL'
+    COMMENT = 'Fetches the lab repo each morning so the Lab Companion shows newly published use cases'
+AS EXECUTE IMMEDIATE $$
+DECLARE
+    refresh BOOLEAN;
+BEGIN
+    SELECT COALESCE(MAX(TRY_TO_BOOLEAN(VALUE)), TRUE) INTO :refresh
+        FROM BANKING_HOL.LAB.SETUP_CONFIG WHERE KEY = 'CONTENT_REFRESH';
+    IF (NOT refresh) THEN
+        RETURN 'Content frozen (CONTENT_REFRESH = FALSE): not fetched';
+    END IF;
+    ALTER GIT REPOSITORY BANKING_HOL_SETUP.PUBLIC.HOL_REPO FETCH;
+    RETURN 'Lab repo fetched';
+END;
+$$;
+ALTER TASK BANKING_HOL.LAB.REFRESH_LAB_CONTENT_TASK RESUME;

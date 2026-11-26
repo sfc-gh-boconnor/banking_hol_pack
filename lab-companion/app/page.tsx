@@ -2,11 +2,13 @@ import { PageHeader } from "@/components/page-header"
 import { PathwayHome } from "@/components/lab/pathway-home"
 import { Welcome } from "@/components/lab/welcome"
 import { MyLabAccount } from "@/components/lab/my-lab-account"
-import { MODULES, PATHWAYS, USE_CASES, checkIds } from "@/lib/content"
+import { MODULES, PATHWAYS, checkIds } from "@/lib/content"
+import { getUseCases, isNew } from "@/lib/use-cases"
 
 export const dynamic = "force-dynamic"
 
-export default function Home() {
+export default async function Home() {
+  const useCases = await getUseCases()
   const modules = MODULES.map((m) => ({ code: m.code, title: m.title, minutes: m.minutes, persona: m.persona, checkIds: checkIds(m.code) }))
   return (
     <main className="mx-auto w-full max-w-7xl space-y-6 px-4 py-6 sm:px-6 sm:py-10 lg:px-8">
@@ -17,7 +19,7 @@ export default function Home() {
       />
       <MyLabAccount />
       <Welcome />
-      <PathwayHome pathways={PATHWAYS} useCases={USE_CASES} modules={modules} />
+      <PathwayHome pathways={PATHWAYS} useCases={useCases} newIds={useCases.filter((u) => isNew(u)).map((u) => u.id)} modules={modules} />
     </main>
   )
 }

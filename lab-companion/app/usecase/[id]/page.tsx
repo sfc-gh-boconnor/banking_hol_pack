@@ -1,11 +1,12 @@
 import Link from "next/link"
 import { notFound } from "next/navigation"
-import { ArrowLeft, ArrowRight, Clock, Presentation } from "lucide-react"
+import { ArrowLeft, ArrowRight, Clock, ExternalLink, Presentation, Sparkles } from "lucide-react"
 import { PageHeader } from "@/components/page-header"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { USE_CASES, moduleByCode, useCaseById } from "@/lib/content"
+import { moduleByCode } from "@/lib/content"
+import { getUseCase, getUseCases, isNew } from "@/lib/use-cases"
 import { aboutDuration } from "@/lib/format"
 import { ExternalAccessBadge } from "@/components/lab/external-access-notice"
 
@@ -14,11 +15,11 @@ export const dynamic = "force-dynamic"
 /** One use case end to end: the business question, the outcome, and the modules that build it, in order. */
 export default async function UseCasePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const u = useCaseById(id)
+  const u = await getUseCase(id)
   if (!u) notFound()
   const steps = u.steps.map((s) => ({ ...s, m: moduleByCode(s.code) })).filter((s) => s.m)
   const minutes = steps.reduce((t, s) => t + (s.m?.minutes ?? 0), 0)
-  const others = USE_CASES.filter((x) => x.id !== u.id)
+  const others = (await getUseCases()).filter((x) => x.id !== u.id)
 
   return (
     <main className="mx-auto w-full max-w-7xl space-y-6 px-4 py-6 sm:px-6 sm:py-10 lg:px-8">
@@ -29,7 +30,12 @@ export default async function UseCasePage({ params }: { params: Promise<{ id: st
         eyebrow={`Use case · ${u.business}`}
         title={u.title}
         description={u.question}
-        actions={<Badge variant="outline" className="gap-1"><Clock className="h-3 w-3" />{aboutDuration(minutes)} hands-on</Badge>}
+        actions={
+          <div className="flex items-center gap-2">
+            {isNew(u) && <Badge className="gap-1"><Sparkles className="h-3 w-3" />New</Badge>}
+            <Badge variant="outline" className="gap-1"><Clock className="h-3 w-3" />{aboutDuration(minutes)} hands-on</Badge>
+          </div>
+        }
       />
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
@@ -41,6 +47,24 @@ export default async function UseCasePage({ params }: { params: Promise<{ id: st
               <p className="text-muted-foreground">Roles involved: {u.roles.join(", ")}. Do it alone end to end, or split the steps across a team.</p>
             </CardContent>
           </Card>
+
+          {u.whyNow && u.whyNow.length > 0 && (
+            <Card>
+              <CardHeader><CardTitle>Why now</CardTitle></CardHeader>
+              <CardContent>
+                <ul className="space-y-3 text-sm">
+                  {u.whyNow.map((w) => (
+                    <li key={w.text} className="space-y-1">
+                      <p>{w.text}</p>
+                      <a href={w.source.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
+                        {w.source.label}, {w.published}<ExternalLink className="h-3 w-3" />
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
+          )}
 
           <ol className="space-y-3">
             {steps.map((s, i) => (
@@ -76,7 +100,11 @@ export default async function UseCasePage({ params }: { params: Promise<{ id: st
           <Card>
             <CardHeader><CardTitle>Other use cases</CardTitle></CardHeader>
             <CardContent className="space-y-2 text-sm">
-              {others.map((o) => <Link key={o.id} href={`/usecase/${o.id}`} className="block rounded-md p-2 hover:bg-muted">{o.title}</Link>)}
+              {others.map((o) => (
+                <Link key={o.id} href={`/usecase/${o.id}`} className="flex items-center justify-between gap-2 rounded-md p-2 hover:bg-muted">
+                  <span>{o.title}</span>{isNew(o) && <Badge className="shrink-0">New</Badge>}
+                </Link>
+              ))}
             </CardContent>
           </Card>
         </div>
