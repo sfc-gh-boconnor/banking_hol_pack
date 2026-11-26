@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import { geoArea, geoMercator, geoPath, type GeoPermissibleObjects } from "d3-geo"
 import { select } from "d3-selection"
+import { useExternalAccess } from "@/components/lab/external-access-notice"
+import { BASEMAP_INTEGRATION } from "@/lib/external-access"
 import { zoom as d3zoom, zoomIdentity, type ZoomTransform } from "d3-zoom"
 import { Minus, Plus, RotateCcw } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -80,6 +82,9 @@ export function GeoMap({ hexes, metric, metricLabel, format = (v) => v.toLocaleS
   overlays = [], highlight, points = [], onPointClick, selectedPoint, focusCity, height = 520, onHoverCity,
   zoomable = false, fineHexes, fineAt = 2.5, onHexClick, selectedHex, hexTip, pointTip, links = [], legend, onLasso, lassoed }: Props) {
   const [hover, setHover] = useState<HexRow | null>(null)
+  // no basemap integration (a trial): the tiles can't load, so say why the background is blank
+  const access = useExternalAccess()
+  const noTiles = Array.isArray(access.data) && !access.data.includes(BASEMAP_INTEGRATION)
   const [hoverPoint, setHoverPoint] = useState<PointRow | null>(null)
   const [mouse, setMouse] = useState<[number, number] | null>(null)
   // lasso: points of the shape being drawn, in SVG pixels
@@ -165,6 +170,11 @@ export function GeoMap({ hexes, metric, metricLabel, format = (v) => v.toLocaleS
     <div ref={box} className="relative h-full" style={{ minHeight: height }}
       onMouseMove={(e) => { const r = e.currentTarget.getBoundingClientRect(); setMouse([e.clientX - r.left, e.clientY - r.top]) }}
       onMouseLeave={() => setMouse(null)}>
+      {noTiles && (
+        <div className="pointer-events-none absolute right-2 top-2 z-10 rounded bg-background/90 px-2 py-1 text-[11px] text-muted-foreground shadow-sm">
+          Map background unavailable: this account has no external access
+        </div>
+      )}
       <svg ref={svgRef} width={Wd} height={Hd} viewBox={`0 0 ${Wd} ${Hd}`}
         onMouseDown={onLasso ? (e) => { if (e.button !== 0) return; const r = e.currentTarget.getBoundingClientRect(); setLasso([[e.clientX - r.left, e.clientY - r.top]]) } : undefined}
         onMouseMove={onLasso ? (e) => { if (!lasso) return; const r = e.currentTarget.getBoundingClientRect(); setLasso([...lasso, [e.clientX - r.left, e.clientY - r.top]]) } : undefined}

@@ -16,6 +16,7 @@ import { CHECKS, PREREQS } from "@/lib/checks"
 import { PrereqPanel } from "@/components/lab/prereq-panel"
 import { CatchupCard } from "@/components/lab/fast-forward"
 import { ModuleStatus } from "@/components/lab/module-status"
+import { ExternalAccessNotice } from "@/components/lab/external-access-notice"
 import { isCatchupName } from "@/lib/catchup"
 import { PgConnectionPanel } from "@/components/lab/pg-connection-panel"
 
@@ -54,6 +55,8 @@ export default async function ModulePage({ params }: { params: Promise<{ code: s
           </div>
         }
       />
+
+      <ExternalAccessNotice code={m.code} />
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
         <div className="min-w-0 space-y-6">

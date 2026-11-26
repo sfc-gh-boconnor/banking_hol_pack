@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import type { UseCase } from "@/lib/content"
 import { aboutDuration } from "@/lib/format"
+import { ExternalAccessBadge } from "@/components/lab/external-access-notice"
 import { cn } from "@/lib/utils"
 
 type ModuleSummary = { code: string; title: string; minutes: number | null; persona: string; checkIds: string[] }
@@ -221,6 +222,7 @@ function ModuleRow({ m, step, passed, total, compact }: { m: ModuleSummary; step
             {m.minutes && <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{m.minutes} min</span>}
           </div>
         </div>
+        <ExternalAccessBadge code={m.code} />
         {total > 0 && (
           complete
             ? <Badge variant="success" className="shrink-0 gap-1"><CheckCircle2 className="h-3 w-3" />Complete</Badge>

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { USE_CASES, moduleByCode, useCaseById } from "@/lib/content"
 import { aboutDuration } from "@/lib/format"
+import { ExternalAccessBadge } from "@/components/lab/external-access-notice"
 
 export const dynamic = "force-dynamic"
 
@@ -52,6 +53,7 @@ export default async function UseCasePage({ params }: { params: Promise<{ id: st
                         <span className="text-sm font-bold text-primary">{s.code}</span>
                         <span className="text-sm font-medium">{s.m!.title}</span>
                         {s.m!.minutes && <span className="flex items-center gap-1 text-xs text-muted-foreground"><Clock className="h-3 w-3" />{s.m!.minutes} min</span>}
+                        <ExternalAccessBadge code={s.code} />
                       </div>
                       <p className="text-sm text-muted-foreground">{s.why}</p>
                     </div>

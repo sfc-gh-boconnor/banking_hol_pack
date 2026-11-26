@@ -21,7 +21,7 @@ Where: the **banking-hol-pack** Workspace > file explorer > `notebooks/ds2_fraud
 Media: ds2_notebook_service.mp4 | Open the notebook > service settings: NOTEBOOK_POOL, 1 hour, HOL_NOTEBOOK_ACCESS_INTEGRATION
 1. Open `notebooks/` > **ds2_fraud_anomaly.ipynb** in the file explorer.
 2. In the notebook toolbar, click the arrow next to the status dot and pick your service under **Select service** (usually `USER_SERVICE_1`, from DS1).
-- No service yet? Choose **Create new service** and fill it in as in DS1: **NOTEBOOK_POOL**, **1 hour** idle timeout, **HOL_NOTEBOOK_ACCESS_INTEGRATION**.
+- No service yet? Choose **Create new service** and fill it in as in DS1: **NOTEBOOK_POOL**, **1 hour** idle timeout, **HOL_NOTEBOOK_ACCESS_INTEGRATION** (leave it empty on a trial account).
 3. Check the role is **HOL_PARTICIPANT** and the warehouse is **BANKING_WH**.
 Expect: the starter notebook open with its numbered headings, connected to your service
 
