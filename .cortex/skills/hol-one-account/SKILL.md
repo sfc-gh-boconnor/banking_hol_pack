@@ -34,10 +34,22 @@ The install runs from the Snowflake CLI, so it needs a user that signs in withou
 2. **Create the service user and token.** Ask them to open a Snowsight worksheet as ACCOUNTADMIN and run:
    ```sql
    USE ROLE ACCOUNTADMIN;
+   -- The lab's warehouse, with the same settings setup/00_admin_provision.sql uses
+   -- (it creates it IF NOT EXISTS, so creating it here first is safe).
+   CREATE WAREHOUSE IF NOT EXISTS BANKING_WH
+     WAREHOUSE_SIZE = 'SMALL'
+     AUTO_SUSPEND = 60
+     AUTO_RESUME = TRUE
+     INITIALLY_SUSPENDED = TRUE
+     COMMENT = 'Warehouse for the Banking HOL pack';
+
    CREATE USER IF NOT EXISTS HOL_DEPLOY
      TYPE = SERVICE
-     DEFAULT_ROLE = ACCOUNTADMIN
      COMMENT = 'Banking HOL: installs the lab from the Snowflake CLI';
+   -- Set the defaults separately, so they also apply if HOL_DEPLOY already exists.
+   ALTER USER HOL_DEPLOY SET
+     DEFAULT_ROLE = ACCOUNTADMIN
+     DEFAULT_WAREHOUSE = BANKING_WH;
    GRANT ROLE ACCOUNTADMIN TO USER HOL_DEPLOY;
 
    -- Authentication policies live in a schema.
@@ -64,8 +76,9 @@ The install runs from the Snowflake CLI, so it needs a user that signs in withou
    - user: `HOL_DEPLOY`;
    - authenticator: `PROGRAMMATIC_ACCESS_TOKEN`;
    - password/token: paste the token;
-   - role: `ACCOUNTADMIN`.
-4. **Test it.** Run `snow connection test -c <new name>`, and show the account, user and role.
+   - role: `ACCOUNTADMIN`;
+   - warehouse: `BANKING_WH`.
+4. **Test it.** Run `snow connection test -c <new name>`, and show the account, user, role and warehouse. If the warehouse is blank, the connection has none: run `ALTER USER HOL_DEPLOY SET DEFAULT_WAREHOUSE = BANKING_WH;` in Snowsight, or add `warehouse = "BANKING_WH"` to the connection.
 5. **After the install**, suggest they remove the token with `ALTER USER HOL_DEPLOY REMOVE PROGRAMMATIC ACCESS TOKEN HOL_DEPLOY_PAT;` (or drop the user and `HOL_ADMIN_DB`) if they won't redeploy.
 
 ### 2. Collect details and get approval
