@@ -1,7 +1,8 @@
 "use client"
 
-import { useQuery } from "@tanstack/react-query"
-import { Info, TriangleAlert } from "lucide-react"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { Info, Loader2, RefreshCw, TriangleAlert } from "lucide-react"
+import { Button } from "@/components/ui/button"
 import { InlineMd } from "@/components/lab/inline-md"
 import { Badge } from "@/components/ui/badge"
 import { missingAccess } from "@/lib/external-access"
@@ -25,6 +26,17 @@ export function useExternalAccess() {
  */
 export function ExternalAccessNotice({ code }: { code: string }) {
   const access = useExternalAccess()
+  const qc = useQueryClient()
+  // the account team may enable external access after install: create what's missing, then look again
+  const recheck = useMutation({
+    mutationFn: async () => {
+      const r = await fetch("/api/external-access", { method: "POST" })
+      const body = await r.json()
+      if (!r.ok) throw new Error(body.error ?? "Check failed")
+      return body as { available: string[]; skipped: string[] }
+    },
+    onSuccess: (body) => qc.setQueryData(["external-access"], body.available),
+  })
   const need = missingAccess(code, access.data)
   if (!need) return null
   const { missing } = need
@@ -50,6 +62,19 @@ export function ExternalAccessNotice({ code }: { code: string }) {
           {missing.length > 1 ? "weren't" : "wasn't"} created.
         </p>
         <p><InlineMd text={need.message} /></p>
+        <div className="flex flex-wrap items-center gap-3 pt-1">
+          <Button size="sm" variant="outline" onClick={() => recheck.mutate()} disabled={recheck.isPending}>
+            {recheck.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+            Check again
+          </Button>
+          <span className="text-xs text-muted-foreground">
+            {recheck.isError
+              ? recheck.error.message
+              : recheck.isSuccess
+                ? "Still no external access on this account. The account team can enable it, then press Check again."
+                : "Has the account team enabled external access? Press Check again to set it up."}
+          </span>
+        </div>
       </div>
     </div>
   )

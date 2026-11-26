@@ -150,32 +150,12 @@ GRANT USAGE, MONITOR ON COMPUTE POOL DS_TRAINING_POOL TO ROLE HOL_PARTICIPANT;
 -- Container runtime installs streamlit/pydeck from PyPI, so it needs external access
 CREATE NETWORK RULE IF NOT EXISTS BANKING_HOL.ANALYTICS.PYPI_NETWORK_RULE MODE = EGRESS TYPE = HOST_PORT
   VALUE_LIST = ('pypi.org', 'pypi.python.org', 'pythonhosted.org', 'files.pythonhosted.org');
-EXECUTE IMMEDIATE $$
-BEGIN
-  CREATE EXTERNAL ACCESS INTEGRATION IF NOT EXISTS PYPI_ACCESS_INTEGRATION
-    ALLOWED_NETWORK_RULES = (BANKING_HOL.ANALYTICS.PYPI_NETWORK_RULE) ENABLED = TRUE;
-  GRANT USAGE ON INTEGRATION PYPI_ACCESS_INTEGRATION TO ROLE HOL_PARTICIPANT;
-  RETURN 'PYPI_ACCESS_INTEGRATION ready';
-EXCEPTION
-  -- trial accounts don't allow external network access: the modules that need it show as optional
-  WHEN OTHER THEN RETURN 'SKIPPED PYPI_ACCESS_INTEGRATION (no external access on this account, e.g. a trial): ' || SQLERRM;
-END;
-$$;
+-- PYPI_ACCESS_INTEGRATION: created by LAB.ENSURE_EXTERNAL_ACCESS() (end of this file)
 -- Lab Companion exec demo basemap: the SPCS proxy's CSP only lets the page load
 -- hosts the service's EAIs allow, so the browser needs this to fetch Esri tiles
 CREATE NETWORK RULE IF NOT EXISTS BANKING_HOL.ANALYTICS.BASEMAP_NETWORK_RULE MODE = EGRESS TYPE = HOST_PORT
   VALUE_LIST = ('server.arcgisonline.com');
-EXECUTE IMMEDIATE $$
-BEGIN
-  CREATE EXTERNAL ACCESS INTEGRATION IF NOT EXISTS BASEMAP_ACCESS_INTEGRATION
-    ALLOWED_NETWORK_RULES = (BANKING_HOL.ANALYTICS.BASEMAP_NETWORK_RULE) ENABLED = TRUE;
-  GRANT USAGE ON INTEGRATION BASEMAP_ACCESS_INTEGRATION TO ROLE HOL_ADMIN;
-  RETURN 'BASEMAP_ACCESS_INTEGRATION ready';
-EXCEPTION
-  -- trial accounts don't allow external network access: the modules that need it show as optional
-  WHEN OTHER THEN RETURN 'SKIPPED BASEMAP_ACCESS_INTEGRATION (no external access on this account, e.g. a trial): ' || SQLERRM;
-END;
-$$;
+-- BASEMAP_ACCESS_INTEGRATION: created by LAB.ENSURE_EXTERNAL_ACCESS() (end of this file)
 
 -- The exec demo's "Every AI call on the record" stop reads AI usage from ACCOUNT_USAGE through an
 -- owner's-rights procedure owned by HOL_ADMIN (BANKING_DEMO.EXEC.DEMO_AI_AUDIT). Participants don't get this role.
@@ -257,18 +237,7 @@ BEGIN
     || :pg_hosts || ''')';
 END;
 $$;
-EXECUTE IMMEDIATE $$
-BEGIN
-  CREATE EXTERNAL ACCESS INTEGRATION IF NOT EXISTS HOL_NOTEBOOK_ACCESS_INTEGRATION
-    ALLOWED_NETWORK_RULES = (BANKING_HOL.ANALYTICS.HOL_NOTEBOOK_EGRESS_RULE) ENABLED = TRUE
-    COMMENT = 'GOV3/DE3 notebooks: this account''s endpoint (AI gateway), Snowflake Postgres and PyPI';
-  GRANT USAGE ON INTEGRATION HOL_NOTEBOOK_ACCESS_INTEGRATION TO ROLE HOL_PARTICIPANT;
-  RETURN 'HOL_NOTEBOOK_ACCESS_INTEGRATION ready';
-EXCEPTION
-  -- trial accounts don't allow external network access: the modules that need it show as optional
-  WHEN OTHER THEN RETURN 'SKIPPED HOL_NOTEBOOK_ACCESS_INTEGRATION (no external access on this account, e.g. a trial): ' || SQLERRM;
-END;
-$$;
+-- HOL_NOTEBOOK_ACCESS_INTEGRATION: created by LAB.ENSURE_EXTERNAL_ACCESS() (end of this file)
 
 -- DE3 streaming source: each attendee creates Snowflake Postgres instance HOL_PAYMENTS_PG and
 -- mirrors it into Snowflake-managed Iceberg (Snowpipe Streaming can't sign in from a notebook).
@@ -318,20 +287,7 @@ CREATE SECRET IF NOT EXISTS BANKING_HOL.REALTIME.PG_ADMIN_SECRET
   TYPE = PASSWORD USERNAME = 'not-set' PASSWORD = 'not-set'
   COMMENT = 'DE3: HOL_PAYMENTS_PG snowflake_admin credentials, saved when the instance is created';
 GRANT OWNERSHIP ON SECRET BANKING_HOL.REALTIME.PG_ADMIN_SECRET TO ROLE HOL_PARTICIPANT COPY CURRENT GRANTS;
-EXECUTE IMMEDIATE $$
-BEGIN
-  CREATE EXTERNAL ACCESS INTEGRATION IF NOT EXISTS HOL_PG_SECRET_INTEGRATION
-    ALLOWED_NETWORK_RULES = (BANKING_HOL.ANALYTICS.HOL_NOTEBOOK_EGRESS_RULE)
-    ALLOWED_AUTHENTICATION_SECRETS = (BANKING_HOL.REALTIME.PG_ADMIN_SECRET)
-    ENABLED = TRUE
-    COMMENT = 'DE3: lets the Lab Companion read PG_ADMIN_SECRET (reveal button)';
-  GRANT USAGE ON INTEGRATION HOL_PG_SECRET_INTEGRATION TO ROLE HOL_ADMIN;
-  RETURN 'HOL_PG_SECRET_INTEGRATION ready';
-EXCEPTION
-  -- trial accounts don't allow external network access: the modules that need it show as optional
-  WHEN OTHER THEN RETURN 'SKIPPED HOL_PG_SECRET_INTEGRATION (no external access on this account, e.g. a trial): ' || SQLERRM;
-END;
-$$;
+-- HOL_PG_SECRET_INTEGRATION: created by LAB.ENSURE_EXTERNAL_ACCESS() (end of this file)
 USE ROLE HOL_ADMIN;
 -- Owner's rights, owned by HOL_ADMIN (the app's role): attendees can't call it from SQL
 CREATE OR REPLACE PROCEDURE BANKING_HOL.LAB.PG_CONNECTION_INFO()
@@ -358,16 +314,7 @@ def run(session):
     return {"ready": row.get("state") == "READY", "state": row.get("state"), "host": row.get("host"),
             "port": 5432, "database": "postgres", "user": cred.username, "password": cred.password}
 $$;
--- attach the secret where external access exists (not on trials: the reveal says why). As the owner.
-EXECUTE IMMEDIATE $$
-BEGIN
-  ALTER PROCEDURE BANKING_HOL.LAB.PG_CONNECTION_INFO() SET EXTERNAL_ACCESS_INTEGRATIONS = (HOL_PG_SECRET_INTEGRATION)
-    SECRETS = ('pg' = BANKING_HOL.REALTIME.PG_ADMIN_SECRET);
-  RETURN 'PG_CONNECTION_INFO can read the saved password';
-EXCEPTION
-  WHEN OTHER THEN RETURN 'SKIPPED the Postgres password reveal (no external access): ' || SQLERRM;
-END;
-$$;
+-- the secret is attached by LAB.ENSURE_EXTERNAL_ACCESS(), once its integration exists
 USE ROLE ACCOUNTADMIN;
 
 -- Snowflake CoWork (formerly Snowflake Intelligence) lists agents in SNOWFLAKE_INTELLIGENCE.AGENTS
@@ -492,3 +439,64 @@ BEGIN
   RETURN result;
 END;
 $$;
+
+-- -----------------------------------------------------
+-- 0.8 External access integrations
+-- Trial accounts can't create external access integrations, so each one is tried on its own and
+-- skipped if it fails. If the account team enables external access later, the Lab Companion's
+-- "Check again" button calls this procedure (owner's rights, as ACCOUNTADMIN) to create them.
+-- The statements run through EXECUTE IMMEDIATE: on a trial, a literal CREATE EXTERNAL ACCESS
+-- INTEGRATION fails when the procedure is compiled, not when it runs.
+-- The network rules it uses are created earlier in this file.
+-- -----------------------------------------------------
+CREATE OR REPLACE PROCEDURE BANKING_HOL.LAB.ENSURE_EXTERNAL_ACCESS()
+  RETURNS VARIANT LANGUAGE SQL
+  COMMENT = 'Creates the lab''s external access integrations where the account allows them; returns which exist'
+  EXECUTE AS OWNER
+AS $$
+DECLARE
+  created ARRAY DEFAULT ARRAY_CONSTRUCT();
+  skipped ARRAY DEFAULT ARRAY_CONSTRUCT();
+  reason VARCHAR DEFAULT NULL;
+BEGIN
+  BEGIN
+    EXECUTE IMMEDIATE 'CREATE EXTERNAL ACCESS INTEGRATION IF NOT EXISTS PYPI_ACCESS_INTEGRATION ALLOWED_NETWORK_RULES = (BANKING_HOL.ANALYTICS.PYPI_NETWORK_RULE) ENABLED = TRUE COMMENT = ''DA3 map app and APP1: install packages from PyPI''';
+    GRANT USAGE ON INTEGRATION PYPI_ACCESS_INTEGRATION TO ROLE HOL_PARTICIPANT;
+    created := ARRAY_APPEND(:created, 'PYPI_ACCESS_INTEGRATION');
+  EXCEPTION WHEN OTHER THEN
+    skipped := ARRAY_APPEND(:skipped, 'PYPI_ACCESS_INTEGRATION');
+    reason := SQLERRM;
+  END;
+  BEGIN
+    -- the exec demo basemap: the app's ingress CSP only allows hosts its EAIs allow
+    EXECUTE IMMEDIATE 'CREATE EXTERNAL ACCESS INTEGRATION IF NOT EXISTS BASEMAP_ACCESS_INTEGRATION ALLOWED_NETWORK_RULES = (BANKING_HOL.ANALYTICS.BASEMAP_NETWORK_RULE) ENABLED = TRUE COMMENT = ''Lab Companion exec demo: Esri basemap tiles''';
+    GRANT USAGE ON INTEGRATION BASEMAP_ACCESS_INTEGRATION TO ROLE HOL_ADMIN;
+    created := ARRAY_APPEND(:created, 'BASEMAP_ACCESS_INTEGRATION');
+  EXCEPTION WHEN OTHER THEN
+    skipped := ARRAY_APPEND(:skipped, 'BASEMAP_ACCESS_INTEGRATION');
+    reason := SQLERRM;
+  END;
+  BEGIN
+    EXECUTE IMMEDIATE 'CREATE EXTERNAL ACCESS INTEGRATION IF NOT EXISTS HOL_NOTEBOOK_ACCESS_INTEGRATION ALLOWED_NETWORK_RULES = (BANKING_HOL.ANALYTICS.HOL_NOTEBOOK_EGRESS_RULE) ENABLED = TRUE COMMENT = ''GOV3/DE3 notebooks: this account''''s endpoint (AI gateway), Snowflake Postgres and PyPI''';
+    GRANT USAGE ON INTEGRATION HOL_NOTEBOOK_ACCESS_INTEGRATION TO ROLE HOL_PARTICIPANT;
+    created := ARRAY_APPEND(:created, 'HOL_NOTEBOOK_ACCESS_INTEGRATION');
+  EXCEPTION WHEN OTHER THEN
+    skipped := ARRAY_APPEND(:skipped, 'HOL_NOTEBOOK_ACCESS_INTEGRATION');
+    reason := SQLERRM;
+  END;
+  BEGIN
+    EXECUTE IMMEDIATE 'CREATE EXTERNAL ACCESS INTEGRATION IF NOT EXISTS HOL_PG_SECRET_INTEGRATION ALLOWED_NETWORK_RULES = (BANKING_HOL.ANALYTICS.HOL_NOTEBOOK_EGRESS_RULE) ALLOWED_AUTHENTICATION_SECRETS = (BANKING_HOL.REALTIME.PG_ADMIN_SECRET) ENABLED = TRUE COMMENT = ''DE3: lets the Lab Companion read PG_ADMIN_SECRET (reveal button)''';
+    GRANT USAGE ON INTEGRATION HOL_PG_SECRET_INTEGRATION TO ROLE HOL_ADMIN;
+    -- the DE3 password reveal reads the saved secret through this integration
+    EXECUTE IMMEDIATE 'ALTER PROCEDURE BANKING_HOL.LAB.PG_CONNECTION_INFO() SET EXTERNAL_ACCESS_INTEGRATIONS = (HOL_PG_SECRET_INTEGRATION) SECRETS = (''pg'' = BANKING_HOL.REALTIME.PG_ADMIN_SECRET)';
+    created := ARRAY_APPEND(:created, 'HOL_PG_SECRET_INTEGRATION');
+  EXCEPTION WHEN OTHER THEN
+    skipped := ARRAY_APPEND(:skipped, 'HOL_PG_SECRET_INTEGRATION');
+    reason := SQLERRM;
+  END;
+  RETURN OBJECT_CONSTRUCT('available', :created, 'skipped', :skipped, 'reason', :reason);
+END;
+$$;
+-- the Lab Companion runs as HOL_ADMIN
+GRANT USAGE ON PROCEDURE BANKING_HOL.LAB.ENSURE_EXTERNAL_ACCESS() TO ROLE HOL_ADMIN;
+CALL BANKING_HOL.LAB.ENSURE_EXTERNAL_ACCESS();
