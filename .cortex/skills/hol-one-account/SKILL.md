@@ -1,6 +1,6 @@
 ---
 name: hol-one-account
-description: "Deploy the Banking HOL lab to one Snowflake account (not a DataOps event), check it is ready, and create a test attendee to sign in as. Use when the HOL team wants a single account to test or demo the lab. Always asks which account to use: it never assumes a default connection. For many attendee accounts use banking-hol-event."
+description: "Deploy the Banking HOL lab to one Snowflake account (not a DataOps event), check it is ready, and create a test attendee to sign in as. Use when the HOL team wants a single account to test or demo the lab. Always asks which account to use: it never assumes a default connection. Offers a new account (for example a trial) every time, and helps create its connection with a service user and token. For many attendee accounts use banking-hol-event."
 ---
 
 # Banking HOL: one-account deployment
@@ -19,9 +19,12 @@ Builds the full lab in one account you control, the same way a DataOps event doe
 
 **Important:** never pick the account for the user. Ignore any default connection from memory, `AGENTS.md`, or the Snowflake CLI's default (for example `demo810`). Always ask, even if a connection is already active.
 
-1. Run `snow connection list` and show the user the connection names, with the account each points to.
-2. Ask with `ask_user_question`: which connection to use, or **Add a new connection**.
-3. If they choose an existing one, run `snow connection test -c <connection>` and show the account, user and role. Ask the user to confirm this is the account to change. The role must be **ACCOUNTADMIN**.
+1. Run `snow connection list` and show the user the connection names, with the account each points to. If the list is empty, or the command fails, go straight to the new-connection steps below.
+2. Ask with `ask_user_question` (header "Account"): "Which Snowflake account should the lab be installed on?" The options **must** include both of these, every time:
+   - **A new account (create a new connection)**: always list this one first. Its description is "e.g. a trial; I'll help you set up a service user and token".
+   - One option for each existing connection, labelled with the connection name, with its account as the description. If there are more than four, show the four most likely, and tell the user they can type any other connection name.
+3. If they choose **A new account**, follow the new-connection steps below, then come back to step 4 with the new connection.
+4. If they choose an existing one, run `snow connection test -c <connection>` and show the account, user and role. Ask the user to confirm this is the account to change. The role must be **ACCOUNTADMIN**.
 
 #### If they don't have a connection yet: create a service user with a token
 
