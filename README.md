@@ -90,7 +90,14 @@ The Iceberg sources, read-only access and Marketplace extension recreate a regul
 | Needs | A browser. No laptop, CLI or DataOps | Snowflake CLI, or a DataOps event |
 | Wake schedule | `CALL BANKING_HOL.LAB.WAKE_LAB()` on the day | From the event times |
 
-### Start here: install with Cortex Code
+### Start here: install with Cortex Code in Snowsight (no laptop)
+
+1. Sign in to Snowsight as a user with ACCOUNTADMIN.
+2. In a SQL worksheet, run [`START_IN_SNOWSIGHT.sql`](START_IN_SNOWSIGHT.sql). It creates the GitHub API integration `BANKING_HOL_GITHUB`, so Snowsight can read this repository.
+3. **Projects > Workspaces**, open the Workspace dropdown (top left) > **From Git repository**. Use this repository's URL, the API integration `BANKING_HOL_GITHUB`, and **Public repository**.
+4. Open Cortex Code in that Workspace and type `/hol-install`. The skill (`.snowflake/cortex/skills/hol-install/`) checks your role and AI, explains what it installs, waits for your approval, then installs the lab and creates a test attendee.
+
+### Or: install with Cortex Code Desktop
 
 1. Clone this repository and open the folder in Cortex Code.
 2. In the chat, ask: **"Install the hands-on lab on my account"**. This runs the `hol-one-account` skill (`.cortex/skills/hol-one-account/`).
@@ -98,7 +105,7 @@ The Iceberg sources, read-only access and Marketplace extension recreate a regul
 4. It asks for a first name and email for a test attendee, explains what will be installed, and waits for your approval.
 5. It builds the lab (about 25 minutes) and creates the test attendee with a one-time password you change at first sign-in. It ends with the Lab Companion URL.
 
-No Cortex Code? Use the one-script install below.
+No Cortex Code at all? Use the one-script install below.
 
 ### Any account (one script)
 
