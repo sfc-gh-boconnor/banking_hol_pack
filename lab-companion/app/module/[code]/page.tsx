@@ -15,6 +15,7 @@ import { CATCHUPS, MODULES, moduleByCode } from "@/lib/content"
 import { CHECKS, PREREQS } from "@/lib/checks"
 import { PrereqPanel } from "@/components/lab/prereq-panel"
 import { CatchupCard } from "@/components/lab/fast-forward"
+import { ModuleStatus } from "@/components/lab/module-status"
 import { isCatchupName } from "@/lib/catchup"
 import { PgConnectionPanel } from "@/components/lab/pg-connection-panel"
 
@@ -67,6 +68,8 @@ export default async function ModulePage({ params }: { params: Promise<{ code: s
               )}
             </CardContent>
           </Card>
+
+          {CHECKS[m.code] && <ModuleStatus code={m.code} />}
 
           {PREREQS[m.code] && <PrereqPanel code={m.code} prerequisites={m.prerequisites} />}
 
