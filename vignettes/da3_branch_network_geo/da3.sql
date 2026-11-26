@@ -15,26 +15,28 @@ USE WAREHOUSE BANKING_WH;
 USE SCHEMA BANKING_HOL.ANALYTICS;
 
 -- -----------------------------------------------------
--- DA3.1 Map the network (notebook: SQL cell + altair map of LON/LAT)
+-- DA3.1 Map the network (notebook: SQL cell, then Chart > Map > Lat / Lon)
 -- -----------------------------------------------------
-SELECT 'BRANCH' AS KIND, BRANCH_NAME AS NAME, CITY, LAT, LON FROM BANKING_HOL.RETAIL.BRANCHES
+SELECT 'Branch' AS SITE, BRANCH_NAME AS NAME, CITY, FORMAT, LAT::FLOAT AS LAT, LON::FLOAT AS LON
+FROM BANKING_HOL.RETAIL.BRANCHES
 UNION ALL
-SELECT 'ATM', ATM_ID, NULL, LAT, LON FROM BANKING_HOL.RETAIL.ATMS WHERE SITE_TYPE = 'STANDALONE';
+SELECT 'ATM', ATM_ID, NULL, NULL, LAT::FLOAT, LON::FLOAT
+FROM BANKING_HOL.RETAIL.ATMS WHERE SITE_TYPE = 'STANDALONE';
 
 -- -----------------------------------------------------
--- DA3.2 Drive-time catchments: who lives within a 10 and 20 minute drive
--- of each branch (ORS isochrones + ST_WITHIN)
+-- DA3.2 Leeds drive-time catchments (notebook: SQL cell, then Chart > Map >
+-- Geography). ORS isochrones + ST_WITHIN
 -- -----------------------------------------------------
-SELECT b.BRANCH_NAME, b.CITY, i.MINUTES,
-       ROUND(ANY_VALUE(ST_AREA(i.CATCHMENT)) / 1e6, 1) AS CATCHMENT_KM2,
+SELECT b.BRANCH_NAME, i.CATCHMENT,
+       ROUND(ST_AREA(i.CATCHMENT) / 1e6, 1) AS CATCHMENT_KM2,
        COUNT(c.CUSTOMER_ID) AS CUSTOMERS_IN_CATCHMENT
 FROM BANKING_HOL.RETAIL.BRANCH_ISOCHRONES i
 JOIN BANKING_HOL.RETAIL.BRANCHES b USING (BRANCH_ID)
 LEFT JOIN BANKING_HOL.RETAIL.RETAIL_CUSTOMERS c
-  ON c.CITY = b.CITY AND ST_WITHIN(c.HOME_LOCATION, i.CATCHMENT)
-WHERE i.PROFILE = 'driving-car'
-GROUP BY 1, 2, 3
-ORDER BY b.CITY, b.BRANCH_NAME, i.MINUTES;
+  ON c.CITY = 'Leeds' AND ST_WITHIN(c.HOME_LOCATION, i.CATCHMENT)
+WHERE i.PROFILE = 'driving-car' AND i.MINUTES = 10 AND b.CITY = 'Leeds'
+GROUP BY b.BRANCH_NAME, i.CATCHMENT
+ORDER BY CUSTOMERS_IN_CATCHMENT DESC;
 
 -- -----------------------------------------------------
 -- DA3.3 Nearest branch by real drive time: each customer's fastest and
@@ -84,14 +86,13 @@ JOIN BANKING_HOL.RETAIL.BRANCH_ISOCHRONES ib ON ib.BRANCH_ID = b.BRANCH_ID AND i
 ORDER BY OVERLAP_PCT DESC, STRAIGHT_LINE_KM;
 
 -- -----------------------------------------------------
--- DA3.5 Customer density with H3 (resolution 8, ~0.7 km2 cells)
--- notebook: altair heat map of cells (H3_CELL_TO_POINT gives the centre)
+-- DA3.5 Customer density with H3 (notebook: SQL cell, then Chart > Map > H3).
+-- Resolution 8, ~0.7 km2 cells
 -- -----------------------------------------------------
-SELECT HOME_H3_CELL AS H3_CELL,
-       ST_Y(H3_CELL_TO_POINT(HOME_H3_CELL)) AS LAT, ST_X(H3_CELL_TO_POINT(HOME_H3_CELL)) AS LON,
-       ANY_VALUE(CITY) AS CITY, COUNT(*) AS CUSTOMERS
+SELECT HOME_H3_CELL AS H3_CELL, COUNT(*) AS CUSTOMERS
 FROM BANKING_HOL.RETAIL.RETAIL_CUSTOMERS
-GROUP BY 1, 2, 3
+WHERE CITY = 'Cardiff'
+GROUP BY HOME_H3_CELL
 ORDER BY CUSTOMERS DESC;
 
 -- -----------------------------------------------------
@@ -141,6 +142,15 @@ ORDER BY DISRUPTION_RISK = 'LOW' DESC, COST_PER_VISIT_GBP DESC
 LIMIT 10;
 
 -- -----------------------------------------------------
+-- DA3.6a Risk on the map (notebook: SQL cell, then Chart > Map > Lat / Lon,
+-- coloured by DISRUPTION_RISK)
+-- -----------------------------------------------------
+SELECT c.BRANCH_NAME, c.CITY, c.DISRUPTION_RISK, c.ANNUAL_SAVING_GBP, c.P90_ADDED_DRIVE_MIN,
+       b.LAT::FLOAT AS LAT, b.LON::FLOAT AS LON
+FROM BRANCH_CLOSURE_IMPACT c
+JOIN BANKING_HOL.RETAIL.BRANCHES b USING (BRANCH_ID);
+
+-- -----------------------------------------------------
 -- DA3.6b Who else pays in here: small businesses, charities and clubs
 -- that deposit cash at the counter. Same move-to-second-fastest rule.
 -- -----------------------------------------------------
@@ -178,7 +188,9 @@ FROM BUSINESS_CLOSURE_IMPACT
 ORDER BY BUSINESSES_OVER_20_MIN DESC LIMIT 5;
 
 -- -----------------------------------------------------
--- DA3.7 Semantic view for Cortex Analyst (drive minutes, no GEOGRAPHY)
+-- DA3.7 Semantic view for Cortex Analyst, with map-ready location columns:
+-- branch LAT/LON points, home H3 cells and catchment polygons as GeoJSON text
+-- (a GEOGRAPHY column can't be a dimension: it can't be grouped by)
 -- -----------------------------------------------------
 CREATE OR REPLACE SEMANTIC VIEW SV_BRANCH_NETWORK
   TABLES (
@@ -186,13 +198,26 @@ CREATE OR REPLACE SEMANTIC VIEW SV_BRANCH_NETWORK
       PRIMARY KEY (BRANCH_ID)
       WITH SYNONYMS = ('branches', 'branch closures', 'consolidation candidates')
       COMMENT = 'One row per branch: what happens if it closes',
+    sites AS BANKING_HOL.RETAIL.BRANCHES
+      PRIMARY KEY (BRANCH_ID)
+      COMMENT = 'Branch locations',
+    catchments AS BANKING_HOL.RETAIL.BRANCH_ISOCHRONES
+      PRIMARY KEY (BRANCH_ID, PROFILE, MINUTES)
+      WITH SYNONYMS = ('isochrones', 'drive-time catchments')
+      COMMENT = 'Area reachable from each branch within a 10 or 20 minute drive or a 15 minute walk (OpenRouteService)',
     customers AS BANKING_HOL.ANALYTICS.CUSTOMER_NEAREST_BRANCH
       PRIMARY KEY (CUSTOMER_ID)
       WITH SYNONYMS = ('retail customers', 'catchment')
-      COMMENT = 'Each retail customer with their fastest and second-fastest branch by drive time'
+      COMMENT = 'Each retail customer with their fastest and second-fastest branch by drive time',
+    homes AS BANKING_HOL.RETAIL.RETAIL_CUSTOMERS
+      PRIMARY KEY (CUSTOMER_ID)
+      COMMENT = 'Customer home locations'
   )
   RELATIONSHIPS (
-    customers (NEAREST_BRANCH_ID) REFERENCES closures
+    closures (BRANCH_ID) REFERENCES sites,
+    catchments (BRANCH_ID) REFERENCES closures,
+    customers (NEAREST_BRANCH_ID) REFERENCES closures,
+    customers (CUSTOMER_ID) REFERENCES homes
   )
   FACTS (
     closures.annual_saving_gbp AS ANNUAL_SAVING_GBP COMMENT = 'Annual running cost saved if the branch closes (GBP)',
@@ -211,9 +236,15 @@ CREATE OR REPLACE SEMANTIC VIEW SV_BRANCH_NETWORK
     closures.format AS FORMAT COMMENT = 'FULL or EXPRESS branch',
     closures.disruption_risk AS DISRUPTION_RISK COMMENT = 'LOW, MEDIUM or HIGH service disruption if closed',
     closures.main_receiving_branch AS MAIN_RECEIVING_BRANCH COMMENT = 'Branch that absorbs most customers',
+    sites.lat AS LAT::FLOAT COMMENT = 'Branch latitude: plot branches on a map with LAT and LON',
+    sites.lon AS LON::FLOAT COMMENT = 'Branch longitude',
+    catchments.profile AS PROFILE COMMENT = 'Travel mode: driving-car or foot-walking',
+    catchments.minutes AS MINUTES COMMENT = 'Catchment size in minutes: 10 or 20 (driving-car), 15 (foot-walking)',
+    catchments.catchment_geojson AS ST_ASGEOJSON(CATCHMENT)::STRING WITH SYNONYMS = ('catchment polygon', 'isochrone') COMMENT = 'Catchment polygon as GeoJSON: draw it on a map as a polygon',
     customers.age_band AS AGE_BAND COMMENT = 'Customer age band',
     customers.segment AS SEGMENT COMMENT = 'MASS, AFFLUENT or SMALL_BUSINESS',
-    customers.digital_active AS DIGITAL_ACTIVE COMMENT = 'Customer uses digital banking'
+    customers.digital_active AS DIGITAL_ACTIVE COMMENT = 'Customer uses digital banking',
+    homes.home_h3_cell AS HOME_H3_CELL WITH SYNONYMS = ('hexagon', 'H3 cell') COMMENT = 'H3 resolution 8 cell (about 0.7 km2) of the customer home: count customers per cell for a density map'
   )
   METRICS (
     closures.total_saving_gbp AS SUM(closures.annual_saving_gbp) COMMENT = 'Total annual saving (GBP)',
@@ -221,12 +252,21 @@ CREATE OR REPLACE SEMANTIC VIEW SV_BRANCH_NETWORK
     customers.customer_count AS COUNT(customers.customer_id) COMMENT = 'Number of customers',
     customers.avg_drive_min AS ROUND(AVG(customers.nearest_drive_min), 1) COMMENT = 'Average drive minutes to the fastest branch'
   )
-  COMMENT = 'DA3 retail branch network and consolidation impact (OpenRouteService travel times)';
+  COMMENT = 'DA3 retail branch network and consolidation impact (OpenRouteService travel times), with map-ready locations'
+;
 
 SELECT * FROM SEMANTIC_VIEW(SV_BRANCH_NETWORK
   METRICS closures.total_saving_gbp, closures.branch_count
   DIMENSIONS closures.city, closures.disruption_risk)
 ORDER BY CITY, DISRUPTION_RISK;
+
+-- map-ready: customers per H3 cell in Cardiff, and the Leeds 10 minute catchments
+SELECT * FROM SEMANTIC_VIEW(SV_BRANCH_NETWORK
+  METRICS customers.customer_count DIMENSIONS homes.home_h3_cell, closures.city)
+WHERE CITY = 'Cardiff' ORDER BY CUSTOMER_COUNT DESC LIMIT 5;
+SELECT BRANCH_NAME, LEFT(CATCHMENT_GEOJSON, 60) AS POLYGON FROM SEMANTIC_VIEW(SV_BRANCH_NETWORK
+  DIMENSIONS closures.branch_name, closures.city, catchments.profile, catchments.minutes, catchments.catchment_geojson)
+WHERE CITY = 'Leeds' AND PROFILE = 'driving-car' AND MINUTES = 10;
 
 -- -----------------------------------------------------
 -- DA3.8 Branch network agent (in the lab: + > Agent > Create with CoCo)
@@ -246,16 +286,22 @@ CREATE OR REPLACE AGENT BANKING_HOL.ANALYTICS.BRANCH_NETWORK_ADVISOR
       lose walk-in access, the disruption risk and vulnerable customers affected, and a short
       90-day transition plan. Never recommend closing a HIGH disruption-risk branch without
       saying why and what mitigation is needed.
-    orchestration: "Use the Analyst tool for every question about branches, closures, catchments, travel time and customers."
+      When a question is about where things are, answer with a map: branches as points from LAT
+      and LON (coloured by DISRUPTION_RISK when risk matters), drive-time catchments as polygons
+      from CATCHMENT_GEOJSON, and customer density as H3 hexagons from HOME_H3_CELL coloured by
+      customer count.
+    orchestration: "Use the Analyst tool for every question about branches, closures, catchments, travel time, customers and locations."
     sample_questions:
       - question: "What is the consolidation opportunity in Leeds?"
-      - question: "Which 3 branches could close with the least added travel time?"
+      - question: "Show the Leeds branches on a map, coloured by disruption risk"
+      - question: "Map the 10 minute drive catchments in Leeds"
+      - question: "Show customer density in Cardiff as an H3 map"
       - question: "Which branch would be hardest to close, and why?"
   tools:
     - tool_spec:
         type: "cortex_analyst_text_to_sql"
         name: "Analyst"
-        description: "Retail branch network: closure impact per branch (saving, visits, added drive time, lost walk-in access, disruption risk) and customer catchments."
+        description: "Retail branch network: closure impact per branch (saving, visits, added drive time, lost walk-in access, disruption risk), customer catchments, and map-ready locations (branch LAT/LON, catchment polygons as GeoJSON, customer home H3 cells)."
   tool_resources:
     Analyst:
       semantic_view: "BANKING_HOL.ANALYTICS.SV_BRANCH_NETWORK"

@@ -3,7 +3,7 @@
 -- Persona: AI Builder
 -- Question: "Our agents need trusted unstructured knowledge, but we are not
 --            allowed to vectorise internal (PII) data yet. What can we do?"
--- Prereq:   Facilitator setup 00 (installs SNOWFLAKE_DOCS_CKE), DA1 (SV_CLIENT_360)
+-- Prereq:   Facilitator setup 00 (installs SNOWFLAKE_DOCS_CKE), DA2 (SV_CLIENT_360)
 --
 -- A Cortex Knowledge Extension (CKE) is a search service that a Marketplace
 -- provider builds, hosts and refreshes. You query it through a share - no

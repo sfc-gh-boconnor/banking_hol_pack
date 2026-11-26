@@ -1,15 +1,15 @@
 -- =====================================================
 -- BANKING HOL PACK - CATCH-UP SCRIPT
--- CLIENT 360 SEMANTIC VIEW (what DA1 builds)
+-- CLIENT 360 SEMANTIC VIEW (what DA2 builds)
 --
--- Run this if you skipped DA1 and your module needs SV_CLIENT_360
+-- Run this if you skipped DA2 and your module needs SV_CLIENT_360
 -- (OPS1, AI1, AI2, AI3). Safe to re-run.
 --   1. Creates the staging views and FEEDBACK_ENRICHED only if they are missing,
---      so it keeps anything DE1 (dbt) or DA2 (AI enrichment) already built.
+--      so it keeps anything DE1 (dbt) or DA1 (AI enrichment) already built.
 --      Scoring FEEDBACK_ENRICHED calls AI_SENTIMENT and AI_CLASSIFY once per
 --      feedback row (about 2,000 rows).
---   2. Builds DA1's contract views and the semantic view SV_CLIENT_360.
--- Keep sections 1 and 2 in step with core_analytics.sql and da1.sql.
+--   2. Builds DA2's contract views and the semantic view SV_CLIENT_360.
+-- Keep sections 1 and 2 in step with core_analytics.sql and da2.sql.
 -- =====================================================
 
 USE ROLE HOL_PARTICIPANT;
@@ -21,6 +21,7 @@ USE SCHEMA BANKING_HOL.ANALYTICS;
 -- 1. Analytics layer, only what is missing
 -- =====================================================
 -- ---------- Staging views ----------
+CALL BANKING_HOL.LAB.CATCHUP_STEP(1, 4, 'Building the staging views if they are missing');
 CREATE VIEW IF NOT EXISTS STG_PAYMENTS AS
 SELECT
     PAYMENT_ID,
@@ -88,7 +89,8 @@ SELECT
 FROM BANKING_HOL.RAW_DATA.ACCOUNTS a
 LEFT JOIN BANKING_HOL.RAW_DATA.CUSTOMERS c ON a.CUSTOMER_ID = c.CUSTOMER_ID;
 
--- ---------- AI enrichment (skipped if DA2 or core_analytics.sql already built it) ----------
+-- ---------- AI enrichment (skipped if DA1 or core_analytics.sql already built it) ----------
+CALL BANKING_HOL.LAB.CATCHUP_STEP(2, 4, 'Scoring customer feedback with AI if it is missing');
 CREATE TABLE IF NOT EXISTS FEEDBACK_ENRICHED AS
 WITH ai_scored AS (
     SELECT f.*, c.CUSTOMER_NAME, c.SECTOR AS CUSTOMER_SECTOR, c.RM_NAME,
@@ -111,11 +113,12 @@ SELECT FEEDBACK_ID, FEEDBACK_DATE, CUSTOMER_ID, CUSTOMER_NAME, CUSTOMER_SECTOR, 
 FROM ai_scored;
 
 -- =====================================================
--- 2. DA1: contract views and SV_CLIENT_360
+-- 2. DA2: contract views and SV_CLIENT_360
 -- =====================================================
 -- -----------------------------------------------------
--- DA1.1 Stable interface views (semantic views should sit on contracts, not raw)
+-- DA2.1 Stable interface views (semantic views should sit on contracts, not raw)
 -- -----------------------------------------------------
+CALL BANKING_HOL.LAB.CATCHUP_STEP(3, 4, 'Building the client summary views');
 CREATE OR REPLACE VIEW V_CLIENT_PAYMENT_SUMMARY
     COMMENT = 'One row per corporate client: payment volumes, success and latency'
 AS
@@ -143,11 +146,12 @@ JOIN BANKING_HOL.RAW_DATA.PAYMENTS p ON al.PAYMENT_ID = p.PAYMENT_ID
 JOIN BANKING_HOL.RAW_DATA.ACCOUNTS a ON p.ORIGINATOR_ACCOUNT_ID = a.ACCOUNT_ID;
 
 -- -----------------------------------------------------
--- DA1.2 The semantic view: business names, relationships, metrics, synonyms
+-- DA2.2 The semantic view: business names, relationships, metrics, synonyms
 -- Tip: you can also build this in Snowsight (AI & ML > Cortex Analyst > Create)
 -- or ask CoCo: "Create a semantic view over STG_CUSTOMERS, V_CLIENT_PAYMENT_SUMMARY,
 -- FEEDBACK_ENRICHED and V_CLIENT_ALERTS joined on CUSTOMER_ID."
 -- -----------------------------------------------------
+CALL BANKING_HOL.LAB.CATCHUP_STEP(4, 4, 'Creating the SV_CLIENT_360 semantic view');
 CREATE OR REPLACE SEMANTIC VIEW SV_CLIENT_360
 
   TABLES (

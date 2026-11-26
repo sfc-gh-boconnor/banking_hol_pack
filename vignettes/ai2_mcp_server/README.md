@@ -4,7 +4,7 @@
 |---|---|
 | **Persona** | AI Builder |
 | **Time** | ~30 min |
-| **Prerequisites** | DA1 (`SV_CLIENT_360`, or run `client_360.sql`), OPS1's agent (run `ops1.sql` if you skipped OPS1), AI1 and the knowledge extension from facilitator setup |
+| **Prerequisites** | DA2 (`SV_CLIENT_360`, or run `client_360.sql`), OPS1's agent (run `ops1.sql` if you skipped OPS1), AI1 and the knowledge extension from facilitator setup |
 
 ## Business question
 > Teams use different AI clients. Expose governed payments tools to all of them once.

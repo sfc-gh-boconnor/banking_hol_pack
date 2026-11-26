@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Persona** | Data Analyst (Retail Banking), Tableau and BI users |
+| **Persona** | Data Analyst (Retail Banking), Tableau, Power BI and BI users |
 | **Time** | ~40 min |
 | **Prerequisites** | DA5 (uses `ANALYTICS.CUSTOMER_VALUE` and `CUSTOMER_VALUE_SEGMENTS`; to catch up, run `vignettes/da5_customer_value/da5.sql`) |
 
@@ -22,6 +22,10 @@ A normal metric is worked out at whatever grain the query groups by. An LOD metr
 | **INCLUDE DIMENSIONS** | adds a finer grain for one calculation, then rolls it up | total each customer's profit first, then average across customers |
 | **FIXED DIMENSIONS** | calculates at a set grain, whatever the query groups by | the city's profit per customer, next to every branch or neighbourhood in it |
 | **EXCLUDE DIMENSIONS** | removes a grain for one calculation | the UK total, whatever the query groups by, for shares and comparisons |
+
+**Power BI and DAX:** the same comparisons are DAX measures, for example `CALCULATE` with `ALL` or `ALLEXCEPT` for a fixed or excluded grain. Semantic View Autopilot can import a Power BI `.pbix` or `.pbit` file and turn its DAX measures into a semantic view, so the logic moves with you.
+
+**Three ways to write the same view:** SQL (the next step), the Semantic Studio UI, or YAML. They all produce one governed semantic view, and you can switch between them.
 
 **Preview:** LOD metrics in semantic views are in preview (November 2026). They work in SQL and in Semantic Studio; Cortex Analyst and Cortex Agents don't use them yet, which is why the last step adds benchmarks agents can use.
 
@@ -115,6 +119,31 @@ CREATE OR REPLACE SEMANTIC VIEW SV_CUSTOMER_VALUE
 SHOW SEMANTIC METRICS IN SV_CUSTOMER_VALUE;
 ```
 Expect: the semantic view created, with about 20 metrics
+
+### See the same view in Semantic Studio
+Where: Snowsight > **AI & ML** > **Cortex Analyst** > **SV_CUSTOMER_VALUE**
+
+Semantic Studio shows the same view as a file you can read and edit.
+
+1. Select **SV_CUSTOMER_VALUE** to open it. It opens as a YAML file in Workspaces.
+2. Find the `avg_profit_per_customer`, `city_profit_per_customer` and `uk_profit` metrics.
+3. Select the **YAML** tab (or read the file) to see the LOD clause in the governed definition.
+4. Select **Monitoring** to see which agent requests use these metrics.
+
+**Important:** don't select **Deploy** yet. Deploy overwrites the live view with your local file. Read first, then close the file.
+
+### Build a view in the UI instead
+Where: Snowsight > **Workspaces** > **Add new** > **Semantic View**
+
+Use this when you want a view without writing SQL. The Autopilot wizard asks for a description, example questions and tables.
+
+1. Select **Add new** > **Semantic View**.
+2. Name the view `SV_CUSTOMER_VALUE_UI`, choose the schema `BANKING_HOL.ANALYTICS`, and add a description.
+3. Under context, pick **SQL Queries**, or upload a **YAML** specification, or a **Power BI** file if you have one.
+4. Select the tables `ANALYTICS.CUSTOMER_VALUE_DETAIL` and `RAW_DATA.RB_MONTHLY_SNAPSHOT`, then select **Create and save**.
+5. Open the view in Semantic Studio and add the city comparison by hand, or ask CoCo: *Add a metric that compares profit per customer with the city average, in percent.*
+
+Expect: a generated view. Compare its metrics with the SQL version above. The SQL version has the LOD metrics, so use it when you need the FIXED and EXCLUDE comparisons.
 
 ### INCLUDE: per customer, not per customer-month
 Where: the same SQL file
@@ -234,7 +263,7 @@ Expect: the same Leeds figures as the FIXED step (about £213 for Leeds and £23
 - `CUSTOMER_VALUE_ADVISOR` answers the Leeds question with the Leeds and UK averages
 
 ## In your bank
-- **Bring your Tableau logic with you.** LOD expressions in a semantic view mean the "per customer", "against the region" and "share of total" logic lives once, in Snowflake, instead of in every workbook.
+- **Bring your Tableau or Power BI logic with you.** LOD expressions in a semantic view mean the "per customer", "against the region" and "share of total" logic lives once, in Snowflake, instead of in every workbook. Power BI DAX measures can be imported with Autopilot.
 - **Context filters still matter.** Decide where a filter belongs (inside the semantic view query, or after it) the same way you decide what is a context filter in Tableau.
 - **Agents next.** When Cortex Analyst and agents support LOD metrics, the benchmark columns can go: the agent will use the same LOD definitions as everyone else.
 - **Performance.** At scale, materialize the semantic view's busiest metrics so dashboards and agents don't recompute them on every question.

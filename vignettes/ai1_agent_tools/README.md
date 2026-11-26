@@ -4,7 +4,7 @@
 |---|---|
 | **Persona** | AI Builder |
 | **Time** | ~45 min |
-| **Prerequisites** | DA1 (`SV_CLIENT_360`), or run `client_360.sql` if you skipped it |
+| **Prerequisites** | DA2 (`SV_CLIENT_360`), or run `client_360.sql` if you skipped it |
 
 ## Business question
 > Ops staff ask about specific payments by ID and about scheme rules - not just aggregates. Give the agent precise tools.

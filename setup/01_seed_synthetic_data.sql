@@ -399,7 +399,7 @@ pay_arr AS (
     SELECT ARRAY_AGG(PAYMENT_ID) AS IDS, COUNT(*) AS CNT
     FROM (SELECT PAYMENT_ID FROM PAYMENTS WHERE STATUS IN ('COMPLETED','FAILED','RETURNED') ORDER BY RANDOM() LIMIT 1200)
 )
-, -- Planted story for DA2: over the last 4 complete months Logistics turns negative and its
+, -- Planted story for DA1: over the last 4 complete months Logistics turns negative and its
 -- clients start talking about leaving (the only churn statements), while Pharmaceuticals improves.
 -- Everything else is random. Text indexes: churn 12-14; negative and positive lists below.
 draws AS (
@@ -448,7 +448,7 @@ SELECT
         'Impressed with the new same-day settlement capability. This has transformed our cash management.',
         'The mobile banking app crashes frequently when approving high-value payments. Needs urgent fix.',
         'Excellent support from the relationship manager. They proactively informed us about the maintenance window.',
-        -- Explicit churn risk: DA2's AI_FILTER step should find these and only these
+        -- Explicit churn risk: DA1's AI_FILTER step should find these and only these
         'Third failed CHAPS payment this quarter. We are now reviewing other banking providers and will decide by month end.',
         'If the SEPA delays continue we will move our payments business to another bank. Please escalate this.',
         'Our board has asked us to tender our transaction banking next year after repeated outages and poor communication.',

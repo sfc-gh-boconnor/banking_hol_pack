@@ -3,7 +3,7 @@
 -- CORE ANALYTICS LAYER (pure SQL equivalent of the dbt project + AI enrichment)
 --
 -- Run this if your chosen vignette needs the analytics layer and you have
--- not completed DE1 (dbt) / DA2 (AI enrichment). Safe to re-run.
+-- not completed DE1 (dbt) / DA1 (AI enrichment). Safe to re-run.
 -- Objects match dbt/models exactly so later vignettes behave the same.
 -- =====================================================
 
@@ -13,6 +13,7 @@ USE WAREHOUSE BANKING_WH;
 USE SCHEMA BANKING_HOL.ANALYTICS;
 
 -- ---------- Staging views ----------
+CALL BANKING_HOL.LAB.CATCHUP_STEP(1, 3, 'Building the staging views');
 CREATE OR REPLACE VIEW STG_PAYMENTS AS
 SELECT
     PAYMENT_ID,
@@ -81,6 +82,7 @@ FROM BANKING_HOL.RAW_DATA.ACCOUNTS a
 LEFT JOIN BANKING_HOL.RAW_DATA.CUSTOMERS c ON a.CUSTOMER_ID = c.CUSTOMER_ID;
 
 -- ---------- Marts ----------
+CALL BANKING_HOL.LAB.CATCHUP_STEP(2, 3, 'Building the payment, SLA and customer marts');
 CREATE OR REPLACE TABLE MART_PAYMENT_KPIS AS
 SELECT
     p.PAYMENT_DAY, p.PAYMENT_TYPE, p.REGION, p.CHANNEL,
@@ -147,7 +149,8 @@ SELECT b.CUSTOMER_ID, b.CUSTOMER_NAME, b.CUSTOMER_SECTOR, b.RM_NAME,
 FROM base b JOIN top_scheme t USING (CUSTOMER_ID)
 GROUP BY b.CUSTOMER_ID, b.CUSTOMER_NAME, b.CUSTOMER_SECTOR, b.RM_NAME, t.MOST_USED_SCHEME;
 
--- ---------- AI enrichment (DA2 builds this step by step) ----------
+-- ---------- AI enrichment (DA1 builds this step by step) ----------
+CALL BANKING_HOL.LAB.CATCHUP_STEP(3, 3, 'Scoring customer feedback with AI (the longest step)');
 CREATE OR REPLACE TABLE FEEDBACK_ENRICHED AS
 WITH ai_scored AS (
     SELECT f.*, c.CUSTOMER_NAME, c.SECTOR AS CUSTOMER_SECTOR, c.RM_NAME,

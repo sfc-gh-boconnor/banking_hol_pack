@@ -4,7 +4,7 @@
 |---|---|
 | **Persona** | Payments Ops analyst |
 | **Time** | ~45 min |
-| **Prerequisites** | DA1 (`SV_CLIENT_360`), or run `client_360.sql` if you skipped it |
+| **Prerequisites** | DA2 (`SV_CLIENT_360`), or run `client_360.sql` if you skipped it |
 
 ## Business question
 > Before I call a client, tell me everything: payments health, open incidents and what they have been complaining about.

@@ -5,7 +5,7 @@
 -- A ready-made payments agent for Snowflake CoWork, built on the Iceberg sources so
 -- OPS3 doesn't depend on any other module:
 --   BANKING_HOL.COWORK_PACK.PAYMENT_ACTIVITY   one row per payment, with client, sector and RM
---   BANKING_HOL.COWORK_PACK.CLIENT_FEEDBACK    client feedback with sector (DA2's Logistics story)
+--   BANKING_HOL.COWORK_PACK.CLIENT_FEEDBACK    client feedback with sector (DA1's Logistics story)
 --   BANKING_HOL.COWORK_PACK.SV_PAYMENTS_OPS    semantic view over both
 --   SNOWFLAKE_INTELLIGENCE.AGENTS.PAYMENTS_OPS_COWORK  agent with Analyst + code execution
 --     (code execution is what CoWork's document generation needs)

@@ -4,7 +4,7 @@
 --
 -- A small, self-contained set of objects built straight on the Iceberg
 -- sources, so GOV2 (lineage, audit and trust) works on any pathway without
--- DE1, DA1 or OPS1. Everything lives in its own schema, AUDIT_PACK, and uses
+-- DE1, DA2 or OPS1. Everything lives in its own schema, AUDIT_PACK, and uses
 -- names no other module builds, so attendees can still do those modules
 -- afterwards.
 --   PAYMENT_SLA_DAILY     daily SLA data product per scheme (GOV2 documents it)

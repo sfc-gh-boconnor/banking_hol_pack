@@ -25,7 +25,7 @@ Clips are Playwright recordings of the real Snowsight UI, made against a test ac
 
 Steps that show something the attendee built earlier (an agent's chat, a model, a deployed app) need that object to exist in the test account. **If any do:**
 
-**⚠️ STOP:** ask whether to build the reference objects in the test account (the module's own `vignettes/<module>/*.sql` or `setup/catchup/*.sql`, run as `HOL_PARTICIPANT`), record navigation only, or skip those steps. Building them marks those steps done in Check my work on that account.
+**⚠️ STOP:** ask whether to build the reference objects in the test account (the module's own `vignettes/<module>/*.sql`, or a catch-up via `CALL BANKING_HOL.LAB.RUN_CATCHUP('<name>')` as `HOL_PARTICIPANT`, see the `hol-catchup` skill), record navigation only, or skip those steps. Building them marks those steps done in Check my work on that account.
 
 ### 2. Sign in
 
@@ -99,6 +99,8 @@ ffmpeg -loglevel error -y -sseof -2 -i out/<name>.mp4 -frames:v 1 /tmp/<name>_en
 ALTER GIT REPOSITORY BANKING_HOL_SETUP.PUBLIC.HOL_REPO FETCH;
 CALL BANKING_HOL.LAB.DEPLOY_LAB_COMPANION();   -- builds from GitHub inside Snowflake, re-grants the app
 ```
+
+Notebook **Map** chart clips (Chart > Chart type: Map > Geo type) are recorded by hand: use the `hol-map-clips` skill.
 
 Related: the architecture diagram, the C2 talking points and the top-bar sections are maintained with the `hol-architecture` skill.
 

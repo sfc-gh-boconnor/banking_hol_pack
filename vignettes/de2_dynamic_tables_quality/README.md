@@ -4,7 +4,7 @@
 |---|---|
 | **Persona** | Data Engineer |
 | **Time** | ~45 min |
-| **Prerequisites** | `setup/catchup/core_analytics.sql` (or DE1 + DA2) |
+| **Prerequisites** | `setup/catchup/core_analytics.sql` (or DE1 + DA1) |
 
 ## Business question
 > Keep an ops-floor SLA monitor fresh without orchestration code, and prove the data feeding it is trustworthy.

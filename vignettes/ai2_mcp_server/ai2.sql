@@ -3,7 +3,7 @@
 -- Persona: AI Builder
 -- Question: "Our teams use different AI clients (Cortex Code, Claude, Copilot,
 --            in-house apps). Expose governed payments tools to all of them once."
--- Prereq:   DA1 (SV_CLIENT_360), OPS1 (CORPORATE_PAYMENTS_360), AI1 (PAYMENT_LOOKUP)
+-- Prereq:   DA2 (SV_CLIENT_360), OPS1 (CORPORATE_PAYMENTS_360), AI1 (PAYMENT_LOOKUP)
 --           and the Marketplace knowledge extension installed by facilitator setup.
 -- =====================================================
 

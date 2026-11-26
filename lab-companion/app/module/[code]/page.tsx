@@ -14,6 +14,8 @@ import { SqlBlock } from "@/components/lab/sql-block"
 import { CATCHUPS, MODULES, moduleByCode } from "@/lib/content"
 import { CHECKS, PREREQS } from "@/lib/checks"
 import { PrereqPanel } from "@/components/lab/prereq-panel"
+import { CatchupCard } from "@/components/lab/fast-forward"
+import { isCatchupName } from "@/lib/catchup"
 import { PgConnectionPanel } from "@/components/lab/pg-connection-panel"
 
 export const dynamic = "force-dynamic"
@@ -32,6 +34,9 @@ export default async function ModulePage({ params }: { params: Promise<{ code: s
   const relevantCatchups = [...CATCHUPS, ...answerKeys]
     .filter((c) => m.prerequisites.includes(fileOf(c.sqlPath)))
     .sort((a, b) => m.prerequisites.indexOf(fileOf(a.sqlPath)) - m.prerequisites.indexOf(fileOf(b.sqlPath)))
+
+  // only the real catch-ups run from the button, not other modules' answer keys
+  const runnable = relevantCatchups.map((c) => fileOf(c.sqlPath).replace(".sql", "")).filter((n, i) => relevantCatchups[i].sqlPath.startsWith("setup/catchup/") && isCatchupName(n))
 
   return (
     <main className="mx-auto w-full max-w-7xl space-y-6 px-4 py-6 sm:px-6 sm:py-10 lg:px-8">
@@ -64,6 +69,8 @@ export default async function ModulePage({ params }: { params: Promise<{ code: s
           </Card>
 
           {PREREQS[m.code] && <PrereqPanel code={m.code} prerequisites={m.prerequisites} />}
+
+          {runnable.length > 0 && <CatchupCard catchups={runnable} />}
 
           <Card>
             <CardHeader><CardTitle>Steps</CardTitle></CardHeader>

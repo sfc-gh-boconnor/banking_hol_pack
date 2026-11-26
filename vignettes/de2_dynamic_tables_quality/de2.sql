@@ -3,7 +3,7 @@
 -- Persona: Data Engineer
 -- Question: "How do I keep an ops-floor SLA monitor fresh without writing
 --            orchestration, and prove the data feeding it is trustworthy?"
--- Prereq:   setup/catchup/core_analytics.sql  (or DE1 + DA2)
+-- Prereq:   setup/catchup/core_analytics.sql  (or DE1 + DA1)
 -- =====================================================
 
 USE ROLE HOL_PARTICIPANT;

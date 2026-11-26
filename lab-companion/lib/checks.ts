@@ -285,22 +285,22 @@ export const CHECKS: Record<string, Check[]> = {
       hint: "+ > Pipeline Builder, schema BANKING_HOL.ANALYTICS (not RAW_DATA), then Deploy.",
     },
   ],
-  DA1: [
+  DA2: [
     {
-      id: "da1_semantic_view",
+      id: "da2_semantic_view",
       label: "Semantic view SV_CLIENT_360 created",
       sql: show("SHOW SEMANTIC VIEWS LIKE 'SV_CLIENT_360' IN SCHEMA BANKING_HOL.ANALYTICS", "SV_CLIENT_360"),
       hint: "Create SV_CLIENT_360 with the semantic view prompt. Prereq: setup/catchup/core_analytics.sql.",
     },
     {
-      id: "da1_semantic_query",
+      id: "da2_semantic_query",
       label: "SV_CLIENT_360 answers a metrics query",
       sql: `SELECT COUNT(*) >= 5 AS OK, COUNT(*) || ' RMs returned' AS DETAIL FROM SEMANTIC_VIEW(
               BANKING_HOL.ANALYTICS.SV_CLIENT_360 DIMENSIONS clients.rm_name METRICS payments.payment_volume)`,
       hint: "Keep the logical names from the prompt: tables clients and payments, dimension rm_name, metric payment_volume.",
     },
     {
-      id: "da1_deployed",
+      id: "da2_deployed",
       label: "SV_CLIENT_360 deployed with a SQL generation instruction and a verified query",
       sql: `SELECT d ILIKE '%ai_sql_generation%' AND d ILIKE '%ai_verified_queries%' AS OK,
                    IFF(d ILIKE '%ai_sql_generation%', 'instruction set', 'no SQL generation instruction') || ', ' ||
@@ -309,9 +309,9 @@ export const CHECKS: Record<string, Check[]> = {
       hint: "In Semantic Studio: add the SQL generation rules under Custom instructions, save a checked Playground answer as a verified query, then press Deploy. Changes in the .sv.yaml file only reach the live view when you deploy.",
     },
   ],
-  DA2: [
+  DA1: [
     {
-      id: "da2_enriched",
+      id: "da1_enriched",
       label: "FEEDBACK_ENRICHED scored with sentiment and topic",
       sql: `SELECT COUNT(*) >= 1000 AND COUNT_IF(TOPIC_CATEGORY IS NULL) = 0 AS OK,
                    COUNT(*) || ' rows, ' || COUNT(DISTINCT TOPIC_CATEGORY) || ' topics' AS DETAIL
@@ -319,7 +319,7 @@ export const CHECKS: Record<string, Check[]> = {
       hint: "Paste the enrichment prompt into Cortex Code.",
     },
     {
-      id: "da2_rm_themes",
+      id: "da1_rm_themes",
       label: "AI_AGG complaint themes generated per RM",
       sql: `SELECT COUNT(*) >= 5 AND COUNT_IF(LENGTH(TOP_THEMES) > 50) = COUNT(*) AS OK, COUNT(*) || ' RMs with themes' AS DETAIL
             FROM BANKING_HOL.ANALYTICS.RM_FEEDBACK_THEMES`,
@@ -341,8 +341,9 @@ export const CHECKS: Record<string, Check[]> = {
     {
       id: "da0_automation",
       label: "Daily Cortex Code automation rebuilds the report",
-      sql: `SHOW AGENT TASKS LIKE 'COCO_ROUTINE_%' IN SCHEMA "USER$".PUBLIC ->> SELECT COUNT(*) > 0 AS OK, COALESCE(NULLIF(LISTAGG("name" || ' (' || "state" || ')', ', '), ''), 'no Cortex Code automation yet') AS DETAIL FROM $1`,
+      sql: `SHOW AGENT TASKS LIKE 'COCO_ROUTINE_%' IN ACCOUNT ->> SELECT COUNT(*) > 0 AS OK, COALESCE(NULLIF(LISTAGG("name" || ' (' || "state" || ')', ', '), ''), 'no Cortex Code automation yet') AS DETAIL FROM $1 WHERE "database_name" = 'USER$' || CURRENT_USER() AND "schema_name" = 'PUBLIC'`,
       hint: "Paste the PAYMENTS_REPORT_REFRESH prompt into the same CoCo session and say yes when it offers to create the automation.",
+      asCaller: true,
     },
   ],
   DA4: [
@@ -392,9 +393,10 @@ export const CHECKS: Record<string, Check[]> = {
     },
     {
       id: "da3_semantic_view",
-      label: "SV_BRANCH_NETWORK semantic view exists",
-      sql: show("SHOW SEMANTIC VIEWS LIKE 'SV_BRANCH_NETWORK' IN SCHEMA BANKING_HOL.ANALYTICS", "SV_BRANCH_NETWORK"),
-      hint: "Paste the semantic view prompt into Cortex Code.",
+      label: "SV_BRANCH_NETWORK has the map columns: branch LAT/LON, catchment polygons and home H3 cells",
+      sql: `SHOW SEMANTIC DIMENSIONS IN BANKING_HOL.ANALYTICS.SV_BRANCH_NETWORK ->> SELECT COUNT_IF("name" ILIKE 'lat') > 0 AND COUNT_IF("name" ILIKE '%geojson%') > 0 AND COUNT_IF("name" ILIKE '%h3%') > 0 AS OK,
+             IFF(COUNT_IF("name" ILIKE '%h3%') > 0 AND COUNT_IF("name" ILIKE '%geojson%') > 0, 'map columns found', 'missing LAT, CATCHMENT_GEOJSON or HOME_H3_CELL') AS DETAIL FROM $1`,
+      hint: "Paste the semantic view prompt into Cortex Code: it must add LAT/LON, CATCHMENT_GEOJSON and HOME_H3_CELL.",
     },
     {
       id: "da3_agent",
@@ -403,10 +405,16 @@ export const CHECKS: Record<string, Check[]> = {
       hint: "Create the agent with + > Agent > Create with CoCo, using the prompt in this step.",
     },
     {
-      id: "da3_map_app",
-      label: "BRANCH_NETWORK_MAP Streamlit app exists",
-      sql: show("SHOW STREAMLITS LIKE 'BRANCH_NETWORK_MAP' IN SCHEMA BANKING_HOL.ANALYTICS", "BRANCH_NETWORK_MAP"),
-      hint: "Ask Cortex Code to build the app from + > Streamlit App, using the prompt in this step.",
+      id: "da3_maps",
+      label: "You ran the catchment and customer density cells behind the maps",
+      sql: `SELECT COUNT_IF(QUERY_TEXT ILIKE '%BRANCH_ISOCHRONES%' AND QUERY_TEXT ILIKE '%ST_WITHIN%' AND QUERY_TEXT ILIKE '%RETAIL_CUSTOMERS%') > 0
+               AND COUNT_IF(QUERY_TEXT ILIKE '%HOME_H3_CELL%' AND QUERY_TEXT ILIKE '%GROUP BY%' AND QUERY_TEXT ILIKE '%Cardiff%') > 0 AS OK,
+             IFF(COUNT_IF(QUERY_TEXT ILIKE '%BRANCH_ISOCHRONES%' AND QUERY_TEXT ILIKE '%ST_WITHIN%') > 0, 'catchments run', 'catchments not run')
+               || ', ' || IFF(COUNT_IF(QUERY_TEXT ILIKE '%HOME_H3_CELL%' AND QUERY_TEXT ILIKE '%Cardiff%') > 0, 'density run', 'density not run') AS DETAIL
+             FROM TABLE(BANKING_HOL.INFORMATION_SCHEMA.QUERY_HISTORY_BY_USER(USER_NAME => ?, RESULT_LIMIT => 1000))
+             WHERE EXECUTION_STATUS = 'SUCCESS' AND START_TIME > DATEADD('day', -2, CURRENT_TIMESTAMP())`,
+      hint: "Run the catchments and density cells from their prompts, then draw each result with Chart > Map.",
+      byUser: true,
     },
   ],
   OPS1: [
@@ -414,7 +422,7 @@ export const CHECKS: Record<string, Check[]> = {
       id: "ops1_agent",
       label: "Corporate Payments 360 agent published",
       sql: show("SHOW AGENTS LIKE 'CORPORATE_PAYMENTS_360' IN SCHEMA SNOWFLAKE_INTELLIGENCE.AGENTS", "Agent"),
-      hint: "+ > Agent > Create with CoCo, using the exact name CORPORATE_PAYMENTS_360 in SNOWFLAKE_INTELLIGENCE.AGENTS. Prereq: DA1, or setup/catchup/client_360.sql.",
+      hint: "+ > Agent > Create with CoCo, using the exact name CORPORATE_PAYMENTS_360 in SNOWFLAKE_INTELLIGENCE.AGENTS. Prereq: DA2, or setup/catchup/client_360.sql.",
     },
   ],
   OPS2: [
@@ -465,7 +473,7 @@ export const CHECKS: Record<string, Check[]> = {
       id: "ai2_mcp",
       label: "PAYMENTS_MCP server created",
       sql: show("SHOW MCP SERVERS LIKE 'PAYMENTS_MCP' IN SCHEMA BANKING_HOL.AGENTS", "MCP server"),
-      hint: "Paste the MCP server prompt into Cortex Code. Prereqs: DA1, OPS1 and AI1.",
+      hint: "Paste the MCP server prompt into Cortex Code. Prereqs: DA2, OPS1 and AI1.",
     },
   ],
   AI3: [
@@ -541,9 +549,54 @@ export const CHECKS: Record<string, Check[]> = {
     {
       id: "gov2_automation",
       label: "Daily Cortex Code automation watches restricted-column access",
-      sql: `SHOW AGENT TASKS LIKE 'COCO_ROUTINE_%' IN SCHEMA "USER$".PUBLIC ->> SELECT COUNT(*) > 0 AS OK, COALESCE(NULLIF(LISTAGG("name" || ' (' || "state" || ')', ', '), ''), 'no Cortex Code automation yet') AS DETAIL FROM $1`,
+      sql: `SHOW AGENT TASKS LIKE 'COCO_ROUTINE_%' IN ACCOUNT ->> SELECT COUNT(*) > 0 AS OK, COALESCE(NULLIF(LISTAGG("name" || ' (' || "state" || ')', ', '), ''), 'no Cortex Code automation yet') AS DETAIL FROM $1 WHERE "database_name" = 'USER$' || CURRENT_USER() AND "schema_name" = 'PUBLIC'`,
       hint: "Ask Cortex Code to set up the daily automation, and say yes when it offers to create it.",
       asCaller: true,
+    },
+  ],
+  GOV5: [
+    {
+      id: "gov5_policies",
+      label: "Masking policies for text, numbers and dates protect RB_CUSTOMERS",
+      sql: `SELECT COUNT(DISTINCT POLICY_NAME) = 3 AS OK, COALESCE(LISTAGG(DISTINCT POLICY_NAME, ', '), 'no masking policies') AS DETAIL
+            FROM TABLE(BANKING_HOL.INFORMATION_SCHEMA.POLICY_REFERENCES(REF_ENTITY_NAME => 'BANKING_HOL.GOVERNANCE.RB_CUSTOMERS', REF_ENTITY_DOMAIN => 'TABLE'))
+            WHERE POLICY_KIND = 'MASKING_POLICY' AND POLICY_NAME IN ('MASK_PD_STRING', 'MASK_PD_NUMBER', 'MASK_PD_DATE')`,
+      hint: "Paste the three masking policy prompts, then the prompt that attaches them to the PERSONAL_DATA tag.",
+    },
+    {
+      id: "gov5_coverage",
+      label: "Every personal data column has a policy (MASKING_COVERAGE shows no gaps)",
+      sql: `SELECT COUNT(*) >= 17 AND COUNT_IF(STATUS = 'GAP') = 0 AS OK, COUNT_IF(STATUS = 'PROTECTED') || ' protected, ' || COUNT_IF(STATUS = 'GAP') || ' gaps' AS DETAIL
+            FROM BANKING_HOL.GOVERNANCE.MASKING_COVERAGE`,
+      hint: "Build the MASKING_COVERAGE view, and tag TOTAL_DEBT_GBP as FINANCIAL so it shows 17 protected columns.",
+    },
+    {
+      id: "gov5_view",
+      label: "CUSTOMER_PROTECTED is shared with HOL_RESTRICTED",
+      sql: `SHOW GRANTS ON VIEW BANKING_HOL.GOVERNANCE.CUSTOMER_PROTECTED ->> SELECT COUNT_IF("grantee_name" = 'HOL_RESTRICTED' AND "privilege" = 'SELECT') > 0 AS OK, COALESCE(LISTAGG("grantee_name", ', '), 'view not found') AS DETAIL FROM $1`,
+      hint: "Create the view and grant SELECT on it to HOL_RESTRICTED.",
+    },
+  ],
+  DE5: [
+    {
+      id: "de5_catalogue",
+      label: "EVIDENCE_CATALOGUE lists every evidence file with its case and type",
+      sql: `SELECT COUNT(*) >= 150 AND COUNT(DISTINCT EVIDENCE_TYPE) >= 5 AS OK, COUNT(*) || ' files, ' || COUNT(DISTINCT EVIDENCE_TYPE) || ' evidence types' AS DETAIL
+            FROM BANKING_HOL.GOVERNANCE.EVIDENCE_CATALOGUE`,
+      hint: "Paste the catalogue prompt; it reads the stage's directory table.",
+    },
+    {
+      id: "de5_share",
+      label: "EVIDENCE_SHARE holds case FRC100054 and HOL_RESTRICTED can read it",
+      sql: `SHOW GRANTS ON STAGE BANKING_HOL.GOVERNANCE.EVIDENCE_SHARE ->> SELECT COUNT_IF("grantee_name" = 'HOL_RESTRICTED' AND "privilege" = 'READ') > 0 AS OK, COALESCE(LISTAGG("privilege" || ' to ' || "grantee_name", ', '), 'stage not found') AS DETAIL FROM $1`,
+      hint: "Create the stage, copy the case files into it, then grant READ to HOL_RESTRICTED.",
+    },
+    {
+      id: "de5_inventory",
+      label: "PLATFORM_INVENTORY lists stages and registered models with their owners",
+      sql: `SELECT COUNT_IF(OBJECT_TYPE = 'Stage') > 0 AND COUNT_IF(OBJECT_TYPE = 'Model version') > 0 AS OK, COUNT_IF(OBJECT_TYPE = 'Stage') || ' stages, ' || COUNT_IF(OBJECT_TYPE = 'Model version') || ' model versions' AS DETAIL
+            FROM BANKING_HOL.GOVERNANCE.PLATFORM_INVENTORY`,
+      hint: "Paste the inventory prompt. If it has no model versions, press Fast-forward on DS1 first.",
     },
   ],
   GOV4: [
@@ -653,10 +706,16 @@ const columns = (table: string, cols: string[]) =>
   `SELECT COUNT(*) = ${cols.length} AS OK, COUNT(*) || ' of ${cols.length} columns: ' || COALESCE(LISTAGG(COLUMN_NAME, ', ') WITHIN GROUP (ORDER BY COLUMN_NAME), 'table not found') AS DETAIL
      FROM BANKING_HOL.INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = 'ANALYTICS' AND TABLE_NAME = '${table}' AND COLUMN_NAME IN (${cols.map((c) => `'${c}'`).join(", ")})`
 
-const CATCHUP = "Or run setup/catchup/core_analytics.sql (Lab Companion > this module > catch-up script)."
+const CATCHUP = "Or run setup/catchup/core_analytics.sql (or press Fast-forward on this module page)."
 const STAGING = ["STG_ACCOUNTS", "STG_CUSTOMERS", "STG_FEEDBACK", "STG_PAYMENTS"]
 
 const pre = {
+  gov4Tags: {
+    id: "pre_gov4_tags",
+    label: "Personal data is tagged PERSONAL_DATA in GOVERNANCE (GOV4)",
+    sql: `SELECT COUNT(*) >= 5 AS OK, COUNT(*) || ' tagged columns in RB_CUSTOMERS' AS DETAIL FROM TABLE(BANKING_HOL.INFORMATION_SCHEMA.TAG_REFERENCES_ALL_COLUMNS('BANKING_HOL.GOVERNANCE.RB_CUSTOMERS', 'table')) WHERE TAG_NAME = 'PERSONAL_DATA'`,
+    hint: "Press **Fast-forward** on this page, or complete GOV4's copy and tagging steps.",
+  },
   staging: { id: "pre_staging", label: "dbt staging views exist", sql: views(STAGING), hint: `Run Build from the dbt pane (DE1). ${CATCHUP}` },
   slaMart: { id: "pre_sla_mart", label: "MART_SLA_COMPLIANCE has data", sql: rows("BANKING_HOL.ANALYTICS.MART_SLA_COMPLIANCE"), hint: `Run Build from the dbt pane (DE1). ${CATCHUP}` },
   customerMart: {
@@ -665,7 +724,7 @@ const pre = {
     sql: columns("MART_CUSTOMER_PAYMENTS", ["CUSTOMER_ID", "RM_NAME", "SUCCESS_RATE_PCT"]),
     hint: `Finish DE1's mart and Build steps (keep the column names in the prompt). ${CATCHUP}`,
   },
-  feedback: { id: "pre_feedback", label: "FEEDBACK_ENRICHED exists (sentiment and topics)", sql: views(["FEEDBACK_ENRICHED"]), hint: `Run setup/catchup/core_analytics.sql (Lab Companion > this module > catch-up script). It builds FEEDBACK_ENRICHED; the lab builds it again in DA2.` },
+  feedback: { id: "pre_feedback", label: "FEEDBACK_ENRICHED exists (sentiment and topics)", sql: views(["FEEDBACK_ENRICHED"]), hint: `Run setup/catchup/core_analytics.sql (or press Fast-forward on this module page). It builds FEEDBACK_ENRICHED; the lab builds it again in DA1.` },
   retailGeo: {
     id: "pre_retail_geo",
     label: "Retail branch network and travel times ready (BANKING_HOL.RETAIL)",
@@ -678,17 +737,23 @@ const pre = {
     sql: show("SHOW AGENTS LIKE 'PAYMENTS_AUDIT_AGENT' IN SCHEMA BANKING_HOL.AUDIT_PACK", "PAYMENTS_AUDIT_AGENT"),
     hint: "The audit pack is built at provisioning. Ask your facilitator to run setup/06_audit_pack.sql.",
   },
+  ds4Predictions: {
+    id: "pre_ds4_predictions",
+    label: "Customer predictions exist (ML.RB_CUSTOMER_PREDICTIONS from DS4)",
+    sql: rows("BANKING_HOL.ML.RB_CUSTOMER_PREDICTIONS", 10000),
+    hint: "Do DS4, or press Fast-forward on this page: it builds the DS1 and DS4 results for you in a few minutes.",
+  },
   svClient360: {
     id: "pre_sv_client_360",
-    label: "SV_CLIENT_360 exists (DA1)",
+    label: "SV_CLIENT_360 exists (DA2)",
     sql: show("SHOW SEMANTIC VIEWS LIKE 'SV_CLIENT_360' IN SCHEMA BANKING_HOL.ANALYTICS", "SV_CLIENT_360"),
-    hint: "Do DA1, or run setup/catchup/client_360.sql (Lab Companion > this module > catch-up script). It builds the analytics layer and SV_CLIENT_360.",
+    hint: "Do DA2, or run setup/catchup/client_360.sql (or press Fast-forward on this module page). It builds the analytics layer and SV_CLIENT_360.",
   },
   agent360: {
     id: "pre_agent_360",
     label: "CORPORATE_PAYMENTS_360 agent exists (OPS1)",
     sql: show("SHOW AGENTS LIKE 'CORPORATE_PAYMENTS_360' IN SCHEMA SNOWFLAKE_INTELLIGENCE.AGENTS", "Agent"),
-    hint: "Do OPS1, or run its answer key ops1.sql (Lab Companion > this module > OPS1 answer key) after SV_CLIENT_360 exists.",
+    hint: "Do OPS1, or run its answer key ops1.sql (see the OPS1 answer key at the bottom of this page) after SV_CLIENT_360 exists.",
   },
   lookup: {
     id: "pre_payment_lookup",
@@ -757,9 +822,10 @@ export const PREREQS: Record<string, Check[]> = {
   APP1: [CHECKS.APP0[0]],
   DE1: [CHECKS.C1[0]],
   DE2: [pre.staging, pre.slaMart, pre.customerMart],
-  DA1: [pre.staging, pre.feedback],
-  DA2: [pre.staging],
+  DA2: [pre.staging, pre.feedback],
+  DA1: [pre.staging],
   DA3: [pre.retailGeo],
+  DA5: [pre.ds4Predictions],
   OPS1: [pre.svClient360],
   OPS2: [pre.staging, pre.feedback],
   OPS3: [pre.coworkAgent],
@@ -768,6 +834,7 @@ export const PREREQS: Record<string, Check[]> = {
   AI3: [pre.cke, pre.svClient360],
   GOV1: [pre.staging],
   GOV2: [pre.auditPack],
+  GOV5: [pre.gov4Tags],
   DE3: [pre.realtime, pre.notebookAccess, pre.postgres],
   DE4: [pre.sparkLab],
   GOV3: [pre.gateway, pre.notebookAccess],

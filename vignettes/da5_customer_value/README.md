@@ -4,7 +4,7 @@
 |---|---|
 | **Persona** | Data Analyst (Retail Banking, customer value management) |
 | **Time** | ~30 min |
-| **Prerequisites** | DS4, or `setup/catchup/ds1_model.sql` then `setup/catchup/ds4_predictions.sql` (uses `ML.RB_CUSTOMER_PREDICTIONS`) |
+| **Prerequisites** | DS4, which builds `ML.RB_CUSTOMER_PREDICTIONS`. If you skipped it, run `setup/catchup/ds1_model.sql` then `setup/catchup/ds4_predictions.sql` first |
 
 ## Business question
 > Of the customers who might leave, which ones are worth the most to keep, how much value is at stake, and what should we offer each of them?
@@ -20,14 +20,24 @@ The data scientists (DS4) own the models: a calibrated chance of leaving and a p
 **Lifetime value** here is 5 years of predicted monthly margin, each month weighted by the chance the customer is still with us and discounted at 10% a year. **Value at risk** is what we expect to lose in the next 12 months if we do nothing: the lifetime value of customers worth keeping, times the chance they leave in that year.
 
 ## Steps
-### Open a SQL file
+### Check the predictions are ready
 Where: Snowsight > Projects > Workspaces > + Add new > SQL File, role HOL_PARTICIPANT, warehouse BANKING_WH
-1. Name it `da5_customer_value.sql` and set the context:
+Everything in this module is built on the data scientists' predictions, so check they exist before you start.
+1. Name the file `da5_customer_value.sql`, then paste and run:
 ```sql
 USE ROLE HOL_PARTICIPANT;
 USE WAREHOUSE BANKING_WH;
 USE SCHEMA BANKING_HOL.ANALYTICS;
+SELECT COUNT(*) AS CUSTOMERS FROM BANKING_HOL.ML.RB_CUSTOMER_PREDICTIONS;
 ```
+Expect: about 18,400 customers.
+**Important:** if the query fails with "does not exist", DS4 hasn't been done in this account. Fast-forward instead of building the models yourself.
+1. In the Lab Companion, find the **Fast-forward** card on this module page.
+2. Press **Fast-forward**.
+3. Wait for both items to show a green tick, which takes a couple of minutes. You can leave the page open.
+4. Run the check above again, or press **Check prerequisites**.
+Fast-forward gives you the DS1 and DS4 results as you, so the tables and models are yours.
+It copies models the lab trained earlier with the same code, so it takes a couple of minutes, not several minutes of training. DS4 trains them as ML Jobs on a compute pool, if you want to see how that is done.
 
 ### Look at what the models give you
 Where: the same SQL file
@@ -128,4 +138,4 @@ Using BANKING_HOL.ANALYTICS.CUSTOMER_VALUE_SEGMENTS, chart lifetime value agains
 - **Agree the definition with finance.** Use the same customer profitability numbers finance reports, and agree the horizon and discount rate, so CVM and finance mean the same thing by "worth".
 - **Rules first, then models.** A transparent offer policy is easy to approve and audit. Once campaigns record who took which offer, the data scientists can train a propensity model per offer and measure uplift.
 - **Consumer Duty.** Value-based treatment must still give every customer fair value: check what the "Serve digitally" and "Maintain" segments are offered, and how vulnerable customers are treated.
-- **Put it where people ask.** Add lifetime value and value at risk to a semantic view (DA1) so relationship managers can ask "who in my book is most at risk?" in plain English. DA6 does this with level of detail metrics, comparing every branch and neighbourhood with its city and the UK.
+- **Put it where people ask.** Add lifetime value and value at risk to a semantic view (DA2) so relationship managers can ask "who in my book is most at risk?" in plain English. DA6 does this with level of detail metrics, comparing every branch and neighbourhood with its city and the UK.

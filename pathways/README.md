@@ -27,8 +27,8 @@ Every attendee does the **shared core**, then follows one pathway. Vignettes are
 ### Data Analyst
 | Block | Vignette | Time |
 |---|---|---|
-| A | Run `setup/catchup/core_analytics.sql`, then [DA2 AI SQL on customer feedback](../vignettes/da2_aisql_feedback/) | 45 |
-| B | [DA1 One trusted answer on client health](../vignettes/da1_semantic_view_analyst/) | 90 |
+| A | Run `setup/catchup/core_analytics.sql`, then [DA1 AI SQL on customer feedback](../vignettes/da1_aisql_feedback/) | 45 |
+| B | [DA2 One trusted answer on client health](../vignettes/da2_semantic_view_analyst/) | 90 |
 | C (stretch) | [DA3 Branch network and spatial analytics](../vignettes/da3_branch_network_geo/) (uses the retail data in `BANKING_HOL.RETAIL`; no catch-up needed) | 45 |
 | C (advanced) | [DA4 Drive-time matrices with OpenRouteService](../vignettes/da4_ors_travel_matrix/) (uses the matrix in `BANKING_HOL.RETAIL`; nothing to install) | 45 |
 | D | [DA5 Customer lifetime value and next-best offers](../vignettes/da5_customer_value/) (catch up: `setup/catchup/ds1_model.sql`, then `setup/catchup/ds4_predictions.sql`) | 30 |
@@ -37,15 +37,15 @@ Every attendee does the **shared core**, then follows one pathway. Vignettes are
 ### Payments Operations analyst (low-code)
 | Block | Vignette | Time |
 |---|---|---|
-| A | DA1 (`SV_CLIENT_360`), or the facilitator runs `setup/catchup/client_360.sql`. Then [OPS1 Corporate Payments 360 agent](../vignettes/ops1_payments_360_agent/) | 45 |
+| A | DA2 (`SV_CLIENT_360`), or the facilitator runs `setup/catchup/client_360.sql`. Then [OPS1 Corporate Payments 360 agent](../vignettes/ops1_payments_360_agent/) | 45 |
 | A/B | [OPS2 Alert triage + negative sentiment feed](../vignettes/ops2_alert_triage/) | 30 |
 | B | [OPS3 Snowflake CoWork: charts, Deep Research, automations, documents and an AI dashboard](../vignettes/ops3_cowork_dashboards/) (agent built at provisioning) | 45 |
-| B | [DA2 AI SQL on feedback](../vignettes/da2_aisql_feedback/) sections 2.3-2.5 only (AI_FILTER, AI_AGG, AI_COMPLETE) | 30 |
+| B | [DA1 AI SQL on feedback](../vignettes/da1_aisql_feedback/) sections 2.3-2.5 only (AI_FILTER, AI_AGG, AI_COMPLETE) | 30 |
 
 ### AI Builder
 | Block | Vignette | Time |
 |---|---|---|
-| A | Run `setup/catchup/core_analytics.sql`, then [DA1 One trusted answer on client health](../vignettes/da1_semantic_view_analyst/): every agent in this pathway uses the `SV_CLIENT_360` you build | 90 |
+| A | Run `setup/catchup/core_analytics.sql`, then [DA2 One trusted answer on client health](../vignettes/da2_semantic_view_analyst/): every agent in this pathway uses the `SV_CLIENT_360` you build | 90 |
 | A | [AI1 Agent with custom tools](../vignettes/ai1_agent_tools/) | 45 |
 | B | [AI3 Marketplace knowledge extension](../vignettes/ai3_knowledge_extension/) | 30 |
 | B | [AI2 Snowflake-managed MCP server](../vignettes/ai2_mcp_server/) (needs OPS1's agent: run `ops1.sql`, shown on the AI2 page, first) | 30 |
@@ -55,6 +55,7 @@ Every attendee does the **shared core**, then follows one pathway. Vignettes are
 |---|---|---|
 | A | Run `setup/catchup/core_analytics.sql`, then [GOV1 Classify, tag, mask and filter PII](../vignettes/gov1_pii_policies/) | 45 |
 | B | [GOV2 Lineage, audit and trust](../vignettes/gov2_lineage_audit/) | 30 |
+| B | [GOV5 Protect personal data at scale](../vignettes/gov5_protect_at_scale/) (needs GOV4, or Fast-forward) | 40 |
 | B | [GOV3 AI governance with Cortex AI Gateway](../vignettes/gov3_ai_gateway/) | 40 |
 | B | [AI3](../vignettes/ai3_knowledge_extension/) discussion: why a knowledge extension is acceptable where Cortex Search is not | 15 |
 
@@ -62,7 +63,7 @@ Every attendee does the **shared core**, then follows one pathway. Vignettes are
 
 ```
 setup/catchup/core_analytics.sql          -- staging, marts, FEEDBACK_ENRICHED (AI scoring)
-setup/catchup/client_360.sql              -- skipped DA1? SV_CLIENT_360 (needed by OPS1, AI1, AI2, AI3);
+setup/catchup/client_360.sql              -- skipped DA2? SV_CLIENT_360 (needed by OPS1, AI1, AI2, AI3);
                                           --   builds any missing staging views and FEEDBACK_ENRICHED first
 vignettes/ops1_payments_360_agent/ops1.sql    -- CORPORATE_PAYMENTS_360 agent (needed by AI2)
 ```
@@ -85,14 +86,14 @@ For senior attendees, or a team that wants to build one story together. Each use
 |---|---|---|
 | Stop APP scams and mule accounts | Retail | C0, DS2, AI4, AI5, GOV1 |
 | Keep the customers worth keeping | Retail | C0, DS0, DS1, DS4, DA5, DA6, DA3, AI4 |
-| Corporate client 360 and payment operations | Corporate | C1, DE1, DA0, DA1, OPS1, OPS2, DA2 |
+| Corporate client 360 and payment operations | Corporate | C1, DE1, DA0, DA2, OPS1, OPS2, DA1 |
 | Roll out AI safely | Every business | C1, GOV1, AI1, GOV2, GOV3 |
 
 The list lives in `USE_CASES` in [lab-companion/lib/content.ts](../lab-companion/lib/content.ts).
 
 ## Shorter formats
 
-- **2-hour taster** (the original format): core C1 (20 min), then DE1 (dbt walk-through only), DA2, OPS1 as a facilitator-led flow.
+- **2-hour taster** (the original format): core C1 (20 min), then DE1 (dbt walk-through only), DA1, OPS1 as a facilitator-led flow.
 - **Single-persona half day** for a homogeneous group (e.g. all analysts): core, then every vignette for that persona plus the finale.
 - **Exec / business demo (15-30 min):** open **Executive demo** in the Lab Companion and click through the retail and corporate tours. It runs on its own database (`BANKING_DEMO`, built at provisioning by `LOAD_LAB_DATA('DEMO')`), so it never depends on or changes lab work. Facilitators can rebuild it from the Facilitator page.
 - **Between sessions:** Facilitator page > **Reset attendee work** (or `CALL BANKING_HOL.LAB.LOAD_LAB_DATA('RESET')`) removes everything attendees built, puts the lab notebooks in the banking-hol-pack Workspace back to the defaults and clears Check my work. It keeps the source data, the Lab Companion and the executive demo. `CALL BANKING_HOL.LAB.RESET_ATTENDEE_WORK(TRUE)` lists what it would remove without changing anything.

@@ -12,7 +12,7 @@ The corporate payments data model, dbt project, semantic view and dashboard star
 |---|---|
 | Source data lands centrally in Iceberg | `BANKING_HOL.RAW_DATA`: 9 **Snowflake-managed Iceberg** tables (no external volume needed) |
 | End users cannot load data | Attendees (`HOL_PARTICIPANT`) have read-only access to `RAW_DATA` and build in `ANALYTICS` / `AGENTS` |
-| Semantic views, agents, MCP and CoWork for business users | Covered by DA1, OPS1, OPS3, AI1, AI2 |
+| Semantic views, agents, MCP and CoWork for business users | Covered by DA2, OPS1, OPS3, AI1, AI2 |
 | Search over documents and conversations | AI3 uses a Marketplace Cortex Knowledge Extension; AI5 builds Cortex Search over call transcripts and case notes |
 | Strict governance | GOV1 tags, masking and row access; GOV2 lineage and audit |
 
@@ -41,9 +41,10 @@ docs/           data model, ERD and column dictionary
 | [DE2](vignettes/de2_dynamic_tables_quality/) | Dynamic Tables + data quality (DMFs) | Data Engineer | 45 |
 | [DE3](vignettes/de3_realtime_payments/) | Real-time payments: Snowflake Postgres streamed to Iceberg with Data Mirroring, interactive warehouse, incident detection | Data Engineer | 45 |
 | [DE4](vignettes/de4_spark_on_snowflake/) | Spark on Snowflake: a PySpark bronze-silver-gold pipeline (CDC, quarantine, reconciliation) run interactively and as a scheduled batch job, monitored in Monitoring > Spark, with a failed-job alert | Data Engineer | 40 |
+| [DE5](vignettes/de5_stages_registries/) | Stages and registries: catalogue evidence files, share a case folder, one inventory of stages and models | Data Engineer | 35 |
 | [DA0](vignettes/da0_interactive_report/) | Interactive payments report with Cortex Code, refreshed by an automation | Data Analyst | 30 |
-| [DA1](vignettes/da1_semantic_view_analyst/) | One trusted answer on client health (semantic view) | Data Analyst | 90 |
-| [DA2](vignettes/da2_aisql_feedback/) | AI SQL on customer feedback (sentiment, AI_AGG themes per RM) | Data Analyst | 45 |
+| [DA1](vignettes/da1_aisql_feedback/) | AI SQL on customer feedback (sentiment, AI_AGG themes per RM) | Data Analyst | 45 |
+| [DA2](vignettes/da2_semantic_view_analyst/) | One trusted answer on client health (semantic view) | Data Analyst | 90 |
 | [DA3](vignettes/da3_branch_network_geo/) | Retail branch network: spatial SQL, H3, closure impact, semantic view and agent | Data Analyst | 45 |
 | [OPS1](vignettes/ops1_payments_360_agent/) | Corporate Payments 360 agent in Snowflake CoWork | Payments Ops | 45 |
 | [OPS2](vignettes/ops2_alert_triage/) | Alert triage + negative sentiment feed | Payments Ops | 30 |
@@ -62,6 +63,7 @@ docs/           data model, ERD and column dictionary
 | [GOV2](vignettes/gov2_lineage_audit/) | Lineage, audit and trust | Governance | 30 |
 | [GOV3](vignettes/gov3_ai_gateway/) | AI governance with Cortex AI Gateway (+ Business Ontology concept) | Governance | 40 |
 | [GOV4](vignettes/gov4_data_request/) | UK GDPR: answer a customer's data request from tagged personal data | Governance | 40 |
+| [GOV5](vignettes/gov5_protect_at_scale/) | Protect personal data at scale: one masking policy per data type on the tag, with a coverage report | Governance | 40 |
 | [APP0](vignettes/app0_plan_an_app/) | Plan an app with Cortex Code and build its data | App Builder | 20 |
 | [APP1](vignettes/app1_fraud_investigator_app/) | Build, deploy and share a fraud investigator Streamlit app from a workspace, no Git | App Builder | 45 |
 
@@ -138,7 +140,7 @@ Then grant `HOL_PARTICIPANT` to the attendee users (`setup/03_add_participants.s
 
 `00` accepts the Marketplace terms for the free **Snowflake Documentation** knowledge extension (listing `GZSTZ67BY9OQ4`) and installs it as `SNOWFLAKE_DOCS_CKE`. To use a finance publisher instead (for example Investopedia), request the listing in Snowsight, then update the service name in `ai3.sql` and `ai2.sql`.
 
-For the **Payments Ops** pathway (low-code), also pre-run the catch-up scripts and DA1 so the agent has data to use. See [pathways/](pathways/README.md#catch-up-order-any-vignette-any-time).
+For the **Payments Ops** pathway (low-code), also pre-run the catch-up scripts and DA2 so the agent has data to use. See [pathways/](pathways/README.md#catch-up-order-any-vignette-any-time).
 
 Teardown: `(cd lab-companion && snow app teardown --force -c <connection> --role HOL_ADMIN)`, then `snow sql -c <connection> -f teardown/teardown.sql`
 

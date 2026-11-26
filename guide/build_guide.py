@@ -12,8 +12,8 @@ ROOT = Path(__file__).resolve().parent.parent
 
 PATHWAYS = {
     "Data Engineer":   ["DE1", "DE2", "GOV2"],
-    "Data Analyst":    ["DA2", "DA1"],
-    "Payments Ops":    ["OPS1", "OPS2", "DA2"],
+    "Data Analyst":    ["DA1", "DA2"],
+    "Payments Ops":    ["OPS1", "OPS2", "DA1"],
     "AI Builder":      ["AI1", "AI3", "AI2"],
     "Governance":      ["GOV1", "GOV2", "AI3"],
 }

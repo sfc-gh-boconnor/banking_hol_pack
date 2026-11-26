@@ -34,7 +34,7 @@ export const DATA_PRODUCTS: DataProduct[] = [
       { name: "OPERATIONAL_ALERTS", grain: "one alert", rows: 1500 },
       { name: "CUSTOMER_FEEDBACK", grain: "one piece of feedback", rows: 2000 },
     ],
-    modules: ["C1", "DE1", "DE2", "DE3", "DE4", "DA0", "DA1", "DA2", "OPS1", "OPS2", "OPS3", "OPS4"],
+    modules: ["C1", "DE1", "DE2", "DE3", "DE4", "DA0", "DA2", "DA1", "OPS1", "OPS2", "OPS3", "OPS4"],
     alsoWorksFor: "card disputes, fraud alerts, faster-payments SLAs",
   },
   {
@@ -102,7 +102,7 @@ export const DATA_PRODUCTS: DataProduct[] = [
       { name: "MART_RM_PERFORMANCE", grain: "one RM", rows: 10 },
       { name: "DP_SLA_COMPLIANCE", grain: "day x scheme", rows: 2196 },
     ],
-    modules: ["DE1", "DE2", "DA1", "OPS1", "AI1", "AI2", "AI3"],
+    modules: ["DE1", "DE2", "DA2", "OPS1", "AI1", "AI2", "AI3"],
     alsoWorksFor: "KPI data products, regulatory reporting, self-serve BI",
   },
   {

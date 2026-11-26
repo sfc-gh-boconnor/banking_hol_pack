@@ -28,7 +28,7 @@
       "items": [
         { "name": "dbt project", "detail": "staging and marts, with tests", "modules": ["DE1"] },
         { "name": "Dynamic tables", "detail": "incremental refresh, data quality, Pipeline Builder", "modules": ["DE2"] },
-        { "name": "Notebooks", "detail": "Python and SQL on notebook services", "modules": ["DE3", "DA2", "DA3", "DS1"] },
+        { "name": "Notebooks", "detail": "Python and SQL on notebook services", "modules": ["DE3", "DA1", "DA3", "DS1"] },
         { "name": "Spark (Snowpark Connect)", "detail": "PySpark sessions and batch jobs on a warehouse", "modules": ["DE4"] }
       ]
     },
@@ -46,8 +46,8 @@
       "icon": "Sparkles",
       "summary": "Business meaning and AI on top of the data",
       "items": [
-        { "name": "Semantic views", "detail": "one set of business definitions for people and AI, with level of detail metrics", "modules": ["DA1", "DA3", "DA6"] },
-        { "name": "Cortex AI SQL", "detail": "sentiment, classify, extract, images and PDFs", "modules": ["DA2", "AI4"] },
+        { "name": "Semantic views", "detail": "one set of business definitions for people and AI, with level of detail metrics", "modules": ["DA2", "DA3", "DA6"] },
+        { "name": "Cortex AI SQL", "detail": "sentiment, classify, extract, images and PDFs", "modules": ["DA1", "AI4"] },
         { "name": "ML models", "detail": "experiments, the Model Registry, calibration, model risk", "modules": ["DS1", "DS2", "DS3", "DS4"] },
         { "name": "Cortex Search", "detail": "semantic search over calls and case notes", "modules": ["AI5"] }
       ]
@@ -67,6 +67,6 @@
     "name": "Govern",
     "icon": "ShieldCheck",
     "detail": "roles and read-only sources, masking and tags, lineage and access history, the AI Gateway, data requests. Agents run as the user, so policies follow the data all the way to the answer",
-    "modules": ["GOV1", "GOV2", "GOV3", "GOV4"]
+    "modules": ["GOV1", "GOV2", "GOV3", "GOV4", "GOV5"]
   }
 }

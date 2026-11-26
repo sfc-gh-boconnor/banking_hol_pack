@@ -42,7 +42,7 @@ export const REGULATIONS: Regulation[] = [
       "Outcomes monitored from the same governed data the business runs on",
     ],
     demo: [{ tour: "retail", stop: "voice", label: "What customers are telling us" }, { tour: "retail", stop: "branches", label: "Branch catchments" }, { tour: "corporate", stop: "feedback", label: "What clients say" }],
-    modules: ["DA2", "DA3", "AI4"],
+    modules: ["DA1", "DA3", "AI4"],
   },
   {
     id: "app-scams", name: "APP scam reimbursement", regulator: "Payment Systems Regulator (PS23/3, PS23/4)",
@@ -81,7 +81,7 @@ export const REGULATIONS: Regulation[] = [
       "One query finds everything held about a customer, ready for the response",
     ],
     demo: [{ tour: "retail", stop: "data-request", label: "A customer asks for their data" }, { tour: "corporate", stop: "governed", label: "Governed by design" }, { tour: "corporate", stop: "ai-audit", label: "Every AI call on the record" }],
-    modules: ["GOV1", "GOV2", "GOV3", "GOV4"],
+    modules: ["GOV1", "GOV2", "GOV3", "GOV4", "GOV5"],
   },
   {
     id: "model-risk", name: "Model risk management", regulator: "PRA (SS1/23)",
@@ -94,7 +94,7 @@ export const REGULATIONS: Regulation[] = [
       "Model card and approval recorded next to the model before it goes live",
     ],
     demo: [{ tour: "retail", stop: "models", label: "Every model on the record" }, { tour: "retail", stop: "attrition", label: "Who's about to leave" }],
-    modules: ["DS1", "DS2", "DS3"],
+    modules: ["DS1", "DS2", "DS3", "DE5"],
   },
   {
     id: "cash-access", name: "Access to cash", regulator: "FCA (PS24/8), firms designated by HM Treasury",

@@ -28,7 +28,7 @@ A `FAILED` script usually means Snowsight has changed, so check that step's word
 
 ## Add a clip
 
-Build it from the steps in `snowsight.mjs` (open the workspace, open a notebook, create its service, pick dropdown options, paste into Cortex Code). For a per-module variant, copy `scripts/da2_notebook_service.mjs`. Then:
+Build it from the steps in `snowsight.mjs` (open the workspace, open a notebook, create its service, pick dropdown options, paste into Cortex Code). For a per-module variant, copy `scripts/da1_notebook_service.mjs`. Then:
 
 - call `mark()` just before the actions you want to show (everything before it is trimmed);
 - use `clickWithHighlight()` so viewers see what's clicked;

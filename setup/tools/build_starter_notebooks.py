@@ -10,7 +10,7 @@ import hashlib, json, pathlib, re
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 MODULES = {  # notebook name: (module folder, title)
-    "da2_feedback_analysis": ("da2_aisql_feedback", "DA2: AI SQL on customer feedback"),
+    "da1_feedback_analysis": ("da1_aisql_feedback", "DA1: AI SQL on customer feedback"),
     "da3_branch_network": ("da3_branch_network_geo", "DA3: Branch network and catchment analysis"),
     "de3_realtime_payments": ("de3_realtime_payments", "DE3: Real-time payments"),
     "gov3_ai_gateway": ("gov3_ai_gateway", "GOV3: AI governance with Cortex AI Gateway"),

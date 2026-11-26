@@ -2,7 +2,7 @@ import Link from "next/link"
 import { ArrowRight } from "lucide-react"
 import { PageHeader } from "@/components/page-header"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { ArchitectureFlow } from "@/components/lab/architecture"
+import { PlatformDiagram } from "@/components/lab/platform-diagram"
 import { ARCHITECTURE } from "@/lib/content"
 
 // Lanes from core/architecture.json, talking points from core/C2_data_product_tour.md (both
@@ -12,16 +12,16 @@ export default function ArchitecturePage() {
     <main className="mx-auto w-full max-w-7xl space-y-6 px-4 py-6 sm:px-6 sm:py-10 lg:px-8">
       <PageHeader
         eyebrow="Architecture"
-        title="The data platform you'll build"
-        description="Six steps from the bank's sources to agents and apps, with governance across all of them. Each card names the modules that build it: select one to open it."
+        title="One governed platform, end to end"
+        description="Everything runs inside Snowflake: open Iceberg storage, elastic compute, AI and apps, all under Snowflake Horizon governance. Module chips open the lab that builds each part."
       />
       <Card>
         <CardHeader>
-          <CardTitle>From source to answer</CardTitle>
+          <CardTitle>Platform architecture</CardTitle>
           <CardDescription>{ARCHITECTURE.intro}</CardDescription>
         </CardHeader>
         <CardContent>
-          <ArchitectureFlow />
+          <PlatformDiagram />
         </CardContent>
       </Card>
       <Card>

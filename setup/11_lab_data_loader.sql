@@ -111,6 +111,8 @@ BEGIN
         ARRAY_CONSTRUCT('Copy calls, emails and cases',   'ALL,RETAIL,TEXT,PROVISION', 'COPY FILES INTO @BANKING_HOL.RETAIL.RB_SEED/text/ FROM ' || repo || 'data/retail_text/ PATTERN = ''.*rb_[a-z_]+[.]csv[.]gz'''),
         ARRAY_CONSTRUCT('Copy fraud evidence files',      'ALL,RETAIL,TEXT,PROVISION', 'COPY FILES INTO @BANKING_HOL.RETAIL.FINCRIME_EVIDENCE FROM ' || repo || 'data/retail_text/evidence/'),
         ARRAY_CONSTRUCT('Text tables and ML schema',      'ALL,RETAIL,TEXT,PROVISION', 'EXECUTE IMMEDIATE FROM ' || repo || 'setup/10_retail_text_seed.sql'),
+        -- trains the DS1 and DS4 models once, so the Fast-forward catch-ups copy them instead of training
+        ARRAY_CONSTRUCT('Pre-trained DS1 and DS4 models',  'ALL,RETAIL,PROVISION', 'EXECUTE IMMEDIATE FROM ' || repo || 'setup/10c_ml_reference.sql'),
         ARRAY_CONSTRUCT('Cortex Search lab (AI5)',        'SEARCH',          'EXECUTE IMMEDIATE FROM ' || repo || 'setup/10b_search_lab.sql'),
         ARRAY_CONSTRUCT('Audit pack',                     'PROVISION',       'EXECUTE IMMEDIATE FROM ' || repo || 'setup/06_audit_pack.sql'),
         ARRAY_CONSTRUCT('CoWork pack',                    'PROVISION',       'EXECUTE IMMEDIATE FROM ' || repo || 'setup/09_cowork_pack.sql'),
@@ -125,6 +127,8 @@ BEGIN
         ARRAY_CONSTRUCT('Demo: search and name matching', 'DEMO_SEARCH',     'EXECUTE IMMEDIATE FROM ' || repo || 'setup/12e_demo_search.sql'),
         -- Facilitator reset: drop what attendees built, keep the data, app and demo
         ARRAY_CONSTRUCT('Remove attendee work',           'RESET',           'CALL BANKING_HOL.LAB.RESET_ATTENDEE_WORK()'),
+        -- the Fast-forward button reads this: after a reset nothing is built any more
+        ARRAY_CONSTRUCT('Clear catch-up history',         'RESET',           'DELETE FROM BANKING_HOL.LAB.CATCHUP_LOG'),
         -- wake and sleep tasks for the event times provisioning stored, if any
         ARRAY_CONSTRUCT('Lab wake schedule',              'PROVISION',       'CALL BANKING_HOL.LAB.SCHEDULE_LAB_FROM_CONFIG()'));
     FOR i IN 0 TO ARRAY_SIZE(all_steps) - 1 DO

@@ -78,6 +78,7 @@ run_sql setup/git_repo.sql
 
 step "3/5 Setup procedures: data loader, app deploy, Lab Companion prerequisites, wake schedule"
 run_sql setup/11_lab_data_loader.sql
+run_sql setup/11b_catchup_runner.sql
 run_sql setup/04_lab_companion.sql
 run_sql setup/05_wake_schedule.sql
 
@@ -126,9 +127,9 @@ if (( WAIT_ALL )); then
   echo "  Lab setup READY"
 fi
 if (( REFERENCE_BUILD )); then
-  step "Reference build (catch-up scripts, DA1, OPS1)"
+  step "Reference build (catch-up scripts, DA2, OPS1)"
   run_sql setup/catchup/core_analytics.sql
-  run_sql vignettes/da1_semantic_view_analyst/da1.sql
+  run_sql vignettes/da2_semantic_view_analyst/da2.sql
   run_sql vignettes/ops1_payments_360_agent/ops1.sql
 fi
 

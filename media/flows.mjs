@@ -392,7 +392,7 @@ export const analystOpenIn = (workspace) => async (page) => {
 
 // Semantic Studio: open <svFile> (e.g. "SV_CLIENT_360") from cortex_project/ in banking-hol-pack,
 // close the one-off notices, then run `act(page, ws)` on camera. The .sv.yaml was created by
-// opening the view from AI > Analyst once (da1_analyst highlights that, so do it by hand first).
+// opening the view from AI > Analyst once (da2_analyst highlights that, so do it by hand first).
 // Never presses Run, Save, Deploy or Run evaluation: actions highlight them, then cancel.
 export function semanticStudioRun(svFile, act) {
   return async ({ page, mark }) => {

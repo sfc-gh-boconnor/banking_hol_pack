@@ -21,7 +21,7 @@ flowchart LR
     direction TB
     L3_1["<b>dbt project</b><br/>DE1"]
     L3_2["<b>Dynamic tables</b><br/>DE2"]
-    L3_3["<b>Notebooks</b><br/>DE3, DA2, DA3, DS1"]
+    L3_3["<b>Notebooks</b><br/>DE3, DA1, DA3, DS1"]
     L3_4["<b>Spark (Snowpark Connect)</b><br/>DE4"]
   end
   subgraph L4["4. Serve"]
@@ -31,8 +31,8 @@ flowchart LR
   end
   subgraph L5["5. Understand"]
     direction TB
-    L5_1["<b>Semantic views</b><br/>DA1, DA3, DA6"]
-    L5_2["<b>Cortex AI SQL</b><br/>DA2, AI4"]
+    L5_1["<b>Semantic views</b><br/>DA2, DA3, DA6"]
+    L5_2["<b>Cortex AI SQL</b><br/>DA1, AI4"]
     L5_3["<b>ML models</b><br/>DS1, DS2, DS3, DS4"]
     L5_4["<b>Cortex Search</b><br/>AI5"]
   end
@@ -43,7 +43,7 @@ flowchart LR
     L6_3["<b>Apps and reports</b><br/>DA0, DA3, APP0, APP1"]
   end
   L1 --> L2 --> L3 --> L4 --> L5 --> L6
-  GOV["<b>Govern, across every step</b><br/>GOV1, GOV2, GOV3, GOV4"]
+  GOV["<b>Govern, across every step</b><br/>GOV1, GOV2, GOV3, GOV4, GOV5"]
   GOV -.- L1
   GOV -.- L2
   GOV -.- L3

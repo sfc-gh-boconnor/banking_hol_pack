@@ -76,7 +76,7 @@ FROM ALERT_RECOMMENDATIONS ORDER BY PRIORITY_SCORE DESC;
 
 -- -----------------------------------------------------
 -- OPS2.4 Hand it to the business
---  * Add V_ALERT_TRIAGE_QUEUE to SV_CLIENT_360 (ask CoCo to extend DA1's view), or
+--  * Add V_ALERT_TRIAGE_QUEUE to SV_CLIENT_360 (ask CoCo to extend DA2's view), or
 --  * Open payments-dashboard/ (Streamlit) and ask CoCo:
 --    "Add a 'Triage' page to the Streamlit app that shows V_ALERT_TRIAGE_QUEUE
 --     ordered by PRIORITY_SCORE with ALERT_RECOMMENDATIONS alongside."

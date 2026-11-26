@@ -10,20 +10,28 @@
 > How do we answer "how far is each neighbourhood from a branch, and from the next one if it closes?" for every neighbourhood at once, from real roads, without customer locations leaving the bank?
 
 ## What you'll build
+- Five maps drawn straight from your SQL results (Chart > Map): one branch's reach, branch catchments, the extra drive if a branch closes, who gets cut off, and the cost of a coarse grid
 - A look inside the lab's drive-time matrix: what it holds, and how real roads differ from straight lines
 - Table `MY_CLOSURE_LOOKUP`: for every neighbourhood, the nearest branch and the next nearest if it closed, the lookup behind the executive demo's closure map
 - A ranking of branches by how many customers a closure would push past 20 minutes
 - The case for the hexagon size: what a coarser grid hides
 
-## Why a precomputed matrix
-DA3 and the executive demo never call a routing engine while you click. Every drive time is a **lookup** in a table keyed by branch and H3 cell, built once with OpenRouteService (ORS). This is the pattern in [Snowflake H3: Precomputing Travel-Time Matrices](https://www.snowflake.com/en/blog/engineering/routing-inside-snowflake-h3-travel-time-matrix0/):
-- Tessellate the area into H3 hexagons. Resolution 8 cells are about 0.7 km², a neighbourhood.
-- Ask the routing engine for the travel time from each branch to every cell, in batches.
-- Store the answers as a table. Queries then take milliseconds on a warehouse, with no routing engine running.
+## How the drive times were made
+Snowflake built this matrix for you, inside Snowflake, so no customer location left the account.
+- **The routing engine** is OpenRouteService (ORS), an open-source engine that runs in a container on Snowpark Container Services
+- **The roads** are OpenStreetMap, loaded into the same account
+- **The method** is to ask ORS for the drive time from every branch to every neighbourhood hexagon (H3 resolution 8, about 0.7 km²), in batches, and store the answers as a table
+- **The result** is `BANKING_HOL.RETAIL.BRANCH_CELL_TRAVEL`, one row per branch, hexagon and travel profile
 
-OpenRouteService runs **inside Snowflake** on Snowpark Container Services, over OpenStreetMap roads, so customer locations never leave the account. It is set up once per account by an admin, which is why the lab ships the matrix ready-made: see [How the matrix was built](#how-the-matrix-was-built) to do it yourself.
+Every question in this module is then a lookup on that table. Nothing calls the routing engine while you click, so answers take milliseconds on a warehouse.
+
+Want to build it for your own branches? Follow the quickstart: [Build Routing Solution in Snowflake with Snowflake CoCo](https://www.snowflake.com/en/developers/guides/oss-install-openrouteservice-native-app/).
+For the pattern behind it, read [Snowflake H3: Precomputing Travel-Time Matrices](https://www.snowflake.com/en/blog/engineering/routing-inside-snowflake-h3-travel-time-matrix0/).
 
 ## Steps
+Each step ends in a map, so you can see the answer before you read the numbers.
+Every map uses the same click path under the results: **Chart** > **Chart type**: **Map** > **Geo type** > **Color by**.
+
 ### Look inside the matrix
 Where: Snowsight > Projects > Workspaces > + Add new > SQL File, role HOL_PARTICIPANT, warehouse BANKING_WH
 1. Paste and run:
@@ -34,19 +42,40 @@ SELECT b.CITY, COUNT(DISTINCT t.BRANCH_ID) AS BRANCHES, COUNT(DISTINCT t.H3_CELL
 FROM BANKING_HOL.RETAIL.BRANCH_CELL_TRAVEL t JOIN BANKING_HOL.RETAIL.BRANCHES b USING (BRANCH_ID)
 WHERE t.PROFILE = 'driving-car' GROUP BY 1 ORDER BY PAIRS DESC;
 ```
-Expect: 8 cities. Every branch in a city has a drive time to every cell around it, so London alone has about 35,000 pairs.
+Expect: 8 cities. Every branch in a city has a drive time to every hexagon around it, so London alone has about 35,000 pairs.
+
+### See one branch's reach
+Where: the same SQL file
+Before any ranking, look at what one row of the matrix means: how far every neighbourhood is from a single branch.
+1. Paste and run:
+```sql
+SELECT t.H3_CELL, ROUND(t.DURATION_S / 60, 1) AS DRIVE_MIN
+FROM BANKING_HOL.RETAIL.BRANCH_CELL_TRAVEL t
+WHERE t.PROFILE = 'driving-car' AND t.BRANCH_ID = 'BR-MAN-04';
+```
+2. Under the results, click **Chart**.
+3. Set **Chart type** to **Map**.
+4. Set **Geo type** to **H3** and check **H3 column** is **H3_CELL**.
+5. Set **Color by** to **DRIVE_MIN**.
+Expect: about 2,100 hexagons across Greater Manchester. The colour is darkest next to **Manchester Altrincham** and fades with every minute of driving, following the roads rather than a circle.
+Tip: use the mouse wheel to zoom in on Altrincham.
 
 ### Real roads, not straight lines
 Where: the same SQL file
 1. Pick the neighbourhood around Manchester city centre and see how far each branch really is:
 ```sql
 SELECT b.BRANCH_NAME, ROUND(t.DURATION_S / 60, 1) AS DRIVE_MIN, ROUND(t.DISTANCE_M / 1000, 1) AS ROAD_KM,
-       ROUND(ST_DISTANCE(b.LOCATION, H3_CELL_TO_POINT(t.H3_CELL)) / 1000, 1) AS STRAIGHT_LINE_KM
+       ROUND(ST_DISTANCE(b.LOCATION, H3_CELL_TO_POINT(t.H3_CELL)) / 1000, 1) AS STRAIGHT_LINE_KM,
+       ST_Y(b.LOCATION)::FLOAT AS LAT, ST_X(b.LOCATION)::FLOAT AS LON
 FROM BANKING_HOL.RETAIL.BRANCH_CELL_TRAVEL t JOIN BANKING_HOL.RETAIL.BRANCHES b USING (BRANCH_ID)
 WHERE t.PROFILE = 'driving-car' AND t.H3_CELL = H3_LATLNG_TO_CELL_STRING(53.4794, -2.2453, 8)
 ORDER BY DRIVE_MIN;
 ```
+2. Under the results, click **Chart** and set **Chart type** to **Map**.
+3. Check **Geo type** is **Lat / Lon**, with **LAT** as latitude and **LON** as longitude.
+4. Set **Color by** to **DRIVE_MIN**.
 Expect: road distances well above the straight line. Altrincham is about 12 km away as the crow flies but nearly 20 km by road.
+On the map, the branches are points coloured by drive time from the city centre.
 
 ### Build the closure lookup
 Where: the same SQL file
@@ -68,6 +97,34 @@ FROM d GROUP BY 1;
 Expect: one row for each of about 12,400 neighbourhoods, with its nearest branch and the one customers would drive to if it closed
 Check: da4_lookup
 
+### Map each branch's catchment
+Where: the same SQL file
+Each hexagon belongs to the branch that is quickest to reach by road. Colour by branch and the catchments appear.
+1. Paste and run:
+```sql
+SELECT H3_CELL, NEAREST_BRANCH, ROUND(NEAREST_MIN, 1) AS NEAREST_MIN
+FROM MY_CLOSURE_LOOKUP WHERE CITY = 'Manchester';
+```
+2. Under the results, click **Chart** and set **Chart type** to **Map**.
+3. Set **Geo type** to **H3** and check **H3 column** is **H3_CELL**.
+4. Set **Color by** to **NEAREST_BRANCH**.
+Expect: Manchester split into 8 coloured catchments, one per branch, with irregular edges that follow the roads and rivers.
+Tip: switch **Color by** to **NEAREST_MIN** to see the places furthest from any branch.
+
+### Map the extra drive if a branch closes
+Where: the same SQL file
+Now colour each hexagon by how much longer the journey gets if its nearest branch closed.
+1. Paste and run:
+```sql
+SELECT H3_CELL, NEAREST_BRANCH, NEXT_BRANCH, ROUND(NEXT_MIN - NEAREST_MIN, 1) AS EXTRA_MIN
+FROM MY_CLOSURE_LOOKUP WHERE CITY = 'Birmingham';
+```
+2. Under the results, click **Chart** and set **Chart type** to **Map**.
+3. Set **Geo type** to **H3** and check **H3 column** is **H3_CELL**.
+4. Set **Color by** to **EXTRA_MIN**.
+Expect: the city centre stays pale, because another branch is only minutes away. The edges are dark, where one closure would add 15 minutes or more.
+This is the picture an executive wants before a closure decision.
+
 ### Which closures cut customers off
 Where: the same SQL file
 1. Put customers on the grid and count who a closure would push past 20 minutes:
@@ -82,10 +139,20 @@ GROUP BY 1, 2 ORDER BY CUSTOMERS_CUT_OFF DESC LIMIT 10;
 ```
 Expect: a few branches stand out, such as Birmingham West Bromwich, where a closure would leave around 300 customers more than 20 minutes from a branch.
 Check: da4_cut_off
-2. Ask Cortex Code to map it:
-```prompt
-Using BANKING_HOL.ANALYTICS.MY_CLOSURE_LOOKUP, add a Streamlit page with a pydeck H3HexagonLayer for one city, coloured by NEXT_MIN - NEAREST_MIN (the extra drive if the nearest branch closed), with the branches as points and a tooltip showing both branches and both times.
+
+### Map who gets cut off
+Where: the same SQL file
+Zoom in on the branch at the top of your ranking.
+1. Paste and run:
+```sql
+SELECT H3_CELL, ROUND(NEXT_MIN, 1) AS DRIVE_IF_CLOSED_MIN
+FROM MY_CLOSURE_LOOKUP WHERE NEAREST_BRANCH = 'BR-BHM-06';
 ```
+2. Under the results, click **Chart** and set **Chart type** to **Map**.
+3. Set **Geo type** to **H3** and check **H3 column** is **H3_CELL**.
+4. Set **Color by** to **DRIVE_IF_CLOSED_MIN**.
+Expect: the 397 neighbourhoods that West Bromwich serves today. Most are over 20 minutes from the next branch, and the darkest are over 40.
+Tip: a coloured hexagon is a neighbourhood, not a customer. The count in the previous step puts customers on these hexagons.
 
 ### Why the hexagon size matters
 Where: the same SQL file
@@ -97,6 +164,15 @@ SELECT COUNT(DISTINCT H3_7) AS RES7_CELLS, (SELECT COUNT(*) FROM MY_CLOSURE_LOOK
 FROM (SELECT H3_7, MAX(NEAREST_MIN) - MIN(NEAREST_MIN) AS SPREAD FROM r7 GROUP BY 1);
 ```
 Expect: drive times inside a single res-7 hexagon differ by about 5 minutes on average, and far more at the edges. That is why the demo map switches to res 8 as you zoom in: a 20-minute rule needs neighbourhood-sized cells.
+2. Now see where the coarse grid hides the detail:
+```sql
+SELECT H3_CELL_TO_PARENT(H3_CELL, 7) AS H3_7, ROUND(MAX(NEAREST_MIN) - MIN(NEAREST_MIN), 1) AS SPREAD_MIN
+FROM MY_CLOSURE_LOOKUP WHERE CITY = 'Manchester' GROUP BY 1;
+```
+3. Under the results, click **Chart** and set **Chart type** to **Map**.
+4. Set **Geo type** to **H3** and check **H3 column** is **H3_7**.
+5. Set **Color by** to **SPREAD_MIN**.
+Expect: Manchester in larger hexagons. The darker ones hide neighbourhoods with very different drive times, which a single average per hexagon would blur.
 
 ## How the matrix was built
 The lab's matrix was made once with the OpenRouteService routing engine, then shipped as seed data so every attendee account works without it. To build your own:
@@ -109,6 +185,7 @@ The lab's matrix was made once with the OpenRouteService routing engine, then sh
 ## Check your work
 - `MY_CLOSURE_LOOKUP` has a row for every cell in the matrix, with a nearest and (almost always) a next nearest branch
 - Your ranking names the branches whose closure would push the most customers past 20 minutes
+- You have drawn the closure map for Birmingham and can point to the neighbourhoods a closure would hurt most
 - You can say why the demo uses res 8 hexagons when zoomed in
 
 ## In your bank

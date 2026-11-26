@@ -3,7 +3,7 @@
 -- Persona: Payments Operations analyst (no SQL needed after setup)
 -- Question: "Before I call a client, tell me everything: payments health,
 --            open incidents, and what they have been complaining about."
--- Prereq:   DA1 (SV_CLIENT_360), or setup/catchup/client_360.sql if you skipped it
+-- Prereq:   DA2 (SV_CLIENT_360), or setup/catchup/client_360.sql if you skipped it
 -- =====================================================
 
 USE ROLE HOL_PARTICIPANT;
@@ -11,7 +11,7 @@ USE SECONDARY ROLES NONE;   -- see exactly what an attendee sees
 USE WAREHOUSE BANKING_WH;
 
 -- -----------------------------------------------------
--- OPS1.1 The agent: the DA1 semantic view as a tool + charting
+-- OPS1.1 The agent: the DA2 semantic view as a tool + charting
 -- Created in SNOWFLAKE_INTELLIGENCE.AGENTS so it appears in Snowflake CoWork
 -- for everyone with access.
 -- (Snowsight alternative: AI & ML > Agents > Create agent - same settings.)

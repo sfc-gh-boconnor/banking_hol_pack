@@ -3,7 +3,7 @@
 -- Persona: AI Builder
 -- Question: "Ops staff ask about specific payments by ID and about scheme
 --            rules - not just aggregates. Give the agent precise tools."
--- Prereq:   DA1 (SV_CLIENT_360), or setup/catchup/client_360.sql if you skipped it
+-- Prereq:   DA2 (SV_CLIENT_360), or setup/catchup/client_360.sql if you skipped it
 -- Builds:   2 UDF tools + PAYMENTS_INVESTIGATOR agent
 -- =====================================================
 
@@ -117,7 +117,7 @@ CREATE OR REPLACE AGENT BANKING_HOL.AGENTS.PAYMENTS_INVESTIGATOR
     - tool_spec:
         type: cortex_analyst_text_to_sql
         name: Client360
-        description: Corporate client 360 from DA1 - payment totals, success rate and failed value per client, RM, alerts and AI-scored feedback sentiment.
+        description: Corporate client 360 from DA2 - payment totals, success rate and failed value per client, RM, alerts and AI-scored feedback sentiment.
   tool_resources:
     PaymentLookup:
       type: function

@@ -4,7 +4,7 @@
 |---|---|
 | **Persona** | AI Builder |
 | **Time** | ~30 min |
-| **Prerequisites** | Facilitator setup 00 (installs `SNOWFLAKE_DOCS_CKE`), DA1 (`SV_CLIENT_360`), or run `client_360.sql` if you skipped it |
+| **Prerequisites** | Facilitator setup 00 (installs `SNOWFLAKE_DOCS_CKE`), DA2 (`SV_CLIENT_360`), or run `client_360.sql` if you skipped it |
 
 ## Business question
 > Agents need trusted unstructured knowledge, but internal (PII) data cannot be vectorised yet. What can we do?

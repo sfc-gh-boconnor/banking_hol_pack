@@ -34,7 +34,8 @@ Each line is its own block, so never wrap a sentence across two lines.
 6. **Tables for settings.** Three or more settings to choose = a `Setting | Value` table.
 7. **No repetition.** Don't repeat the `Where:` line in the body. Say each thing once.
 8. **Plain words.** UK spelling, no jargon the attendee hasn't met yet, no emoji, no em dashes.
-9. **Keep the machinery.** Don't change prompts, `Check:` ids, `Media:` lines or anchors unless asked.
+9. **Fast-forward, not copy-and-run.** If a step needs something an earlier module builds, point to the **Fast-forward** button on the module page. Never tell the attendee to run catch-up SQL by hand (see the `hol-catchup` skill).
+10. **Keep the machinery.** Don't change prompts, `Check:` ids, `Media:` lines or anchors unless asked.
 
 ## Example
 
