@@ -40,6 +40,15 @@ CREATE WAREHOUSE IF NOT EXISTS BANKING_WH
 GRANT USAGE, OPERATE ON WAREHOUSE BANKING_WH TO ROLE HOL_PARTICIPANT;
 GRANT USAGE ON WAREHOUSE BANKING_WH TO ROLE HOL_RESTRICTED;
 GRANT ALL ON WAREHOUSE BANKING_WH TO ROLE HOL_ADMIN;
+-- Builds the Lab Companion while the lab data loads on BANKING_WH: the deploy procedure checks the
+-- build every 10 seconds, and on BANKING_WH those checks would queue behind the load.
+CREATE WAREHOUSE IF NOT EXISTS BANKING_SETUP_WH
+    WAREHOUSE_SIZE = 'XSMALL'
+    AUTO_SUSPEND = 60
+    AUTO_RESUME = TRUE
+    INITIALLY_SUSPENDED = TRUE
+    COMMENT = 'Banking HOL: builds the Lab Companion during setup';
+GRANT ALL ON WAREHOUSE BANKING_SETUP_WH TO ROLE HOL_ADMIN;
 
 -- Give the installing user the admin role (attendees: 03_add_participants.sql).
 -- A scripting block rather than a session variable, so this file also runs via

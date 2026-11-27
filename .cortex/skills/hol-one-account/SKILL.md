@@ -101,7 +101,7 @@ bash setup/provision_account.sh <connection> --wait-all
 
 What it does, in order:
 - Creates the roles, database, warehouse and Git repository link, then starts the lab setup as the background task `BANKING_HOL.LAB.PROVISION_LAB`.
-- Builds the Lab Companion inside Snowflake (`LAB.DEPLOY_LAB_COMPANION`) and prints its URL.
+- Builds the Lab Companion inside Snowflake (`LAB.DEPLOY_LAB_COMPANION`) at the same time, on its own warehouse `BANKING_SETUP_WH`, and prints its URL.
 - With `--wait-all`, waits for `SETUP_SUMMARY` to read `READY`. That takes about 10 to 15 minutes.
 - Then runs `setup/10c_ml_reference.sql` as `HOL_ADMIN` to pre-train the DS1 and DS4 models. That takes about 4 minutes more. It runs after the loader because a nested run fails inside the loader.
 

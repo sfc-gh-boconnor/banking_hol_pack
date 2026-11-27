@@ -105,10 +105,15 @@ INSERT INTO BANKING_HOL.LAB.SETUP_CONFIG (KEY, VALUE) VALUES
   && ! grep -q "─ Error" /tmp/hol_start_setup.log \
   || { echo "FAILED: could not record the lab settings (see /tmp/hol_start_setup.log)"; grep -A6 "─ Error" /tmp/hol_start_setup.log | head -10; exit 1; }
 
-step "5/5 Build the Lab Companion inside Snowflake (~2 min), then start the lab setup in the background"
-# The app first, on a quiet warehouse: built alongside the data load it queued behind it. Not part of
-# the task: the app's remote build authenticates as this session, which a task can't.
-snow sql -c "$CONN" --role HOL_ADMIN --format json -q "USE WAREHOUSE BANKING_WH; CALL BANKING_HOL.LAB.DEPLOY_LAB_COMPANION()" \
+step "5/5 Start the lab setup in the background, then build the Lab Companion alongside it"
+# The data load first: it doesn't need the app, so the two run side by side (saves the ~6 min build).
+snow sql -c "$CONN" --role HOL_ADMIN -q "EXECUTE TASK BANKING_HOL.LAB.PROVISION_LAB" > /tmp/hol_start_setup.log 2>&1 \
+  && ! grep -q "─ Error" /tmp/hol_start_setup.log \
+  || { echo "FAILED: could not start the lab setup (see /tmp/hol_start_setup.log)"; grep -A6 "─ Error" /tmp/hol_start_setup.log | head -10; exit 1; }
+echo "  Lab setup started in the background. Follow it in Snowsight: SELECT * FROM BANKING_HOL.LAB.SETUP_STATUS;"
+# The app on its own warehouse: the load holds BANKING_WH, and the deploy's build checks would queue
+# behind it. Not part of the task: the app's remote build authenticates as this session, which a task can't.
+snow sql -c "$CONN" --role HOL_ADMIN --format json -q "USE WAREHOUSE BANKING_SETUP_WH; CALL BANKING_HOL.LAB.DEPLOY_LAB_COMPANION()" \
   > /tmp/hol_app.log 2>&1 && ! grep -q "─ Error" /tmp/hol_app.log \
   || { echo "FAILED: Lab Companion build (see /tmp/hol_app.log). Fallback: setup/install_lab_companion.sh $CONN"; grep -A8 "─ Error\|Error" /tmp/hol_app.log | head -12; exit 1; }
 URL=$(grep -o 'https://[a-z0-9.-]*snowflakecomputing\.app' /tmp/hol_app.log | tail -1)
@@ -118,10 +123,6 @@ printf "[%s UTC] Lab Companion: %s\n" "$(date -u +%H:%M:%S)" "$URL"
 # there); remove one left by an earlier provisioning
 snow sql -c "$CONN" --role HOL_ADMIN -q "DROP STREAMLIT IF EXISTS BANKING_HOL.LAB.LAB_GUIDE; DELETE FROM BANKING_HOL.LAB.SETUP_CONFIG WHERE KEY = 'GUIDE'" > /tmp/hol_guide_drop.log 2>&1 \
   || echo "  (could not remove the guide Streamlit app: see /tmp/hol_guide_drop.log)"
-snow sql -c "$CONN" --role HOL_ADMIN -q "EXECUTE TASK BANKING_HOL.LAB.PROVISION_LAB" > /tmp/hol_start_setup.log 2>&1 \
-  && ! grep -q "─ Error" /tmp/hol_start_setup.log \
-  || { echo "FAILED: could not start the lab setup (see /tmp/hol_start_setup.log)"; grep -A6 "─ Error" /tmp/hol_start_setup.log | head -10; exit 1; }
-echo "  Lab setup started in the background. Follow it in Snowsight: SELECT * FROM BANKING_HOL.LAB.SETUP_STATUS;"
 
 if (( WAIT_ALL )); then
   step "Waiting for the rest of the setup (lab data, packs, dbt, demo: ~10-15 min)"

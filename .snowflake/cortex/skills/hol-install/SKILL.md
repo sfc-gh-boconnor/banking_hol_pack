@@ -78,7 +78,7 @@ Then tell the user, in plain words:
 
 Open `INSTALL.sql` and run its statements **one by one**, in order:
 - Each `EXECUTE IMMEDIATE FROM @...` line and each `EXECUTE IMMEDIATE $$ ... $$` block is one statement.
-- Section 5 (the Lab Companion build) takes 2 to 10 minutes. If the SQL tool times out, check with `SELECT VALUE FROM BANKING_HOL.LAB.SETUP_CONFIG WHERE KEY = 'APP_URL';` before running it again.
+- Section 5 starts the data load in the background; section 6 builds the Lab Companion alongside it (2 to 10 minutes) on `BANKING_SETUP_WH`. If the SQL tool times out during section 6, check with `SELECT VALUE FROM BANKING_HOL.LAB.SETUP_CONFIG WHERE KEY = 'APP_URL';` before running it again. Don't run section 5 again: the load is already going.
 - If a statement fails, show the error and stop. Don't skip it.
 
 The last statement prints the next step: the Lab Companion URL, or the written lab guide when the account can't run apps.

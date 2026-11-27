@@ -91,13 +91,20 @@ INSERT INTO BANKING_HOL.LAB.SETUP_CONFIG (KEY, VALUE) VALUES
 EXECUTE IMMEDIATE FROM @BANKING_HOL_SETUP.PUBLIC.HOL_REPO/branches/main/setup/14_workspace.sql;
 
 -- -----------------------------------------------------
--- 5. Build the Lab Companion inside Snowflake (2 to 10 minutes the first time)
+-- 5. Load the lab data in the background (about 10 minutes), and build the Lab Companion alongside
+--    it. Follow the load with: SELECT * FROM BANKING_HOL.LAB.SETUP_STATUS;
+-- -----------------------------------------------------
+EXECUTE TASK BANKING_HOL.LAB.PROVISION_LAB;
+
+-- -----------------------------------------------------
+-- 6. Build the Lab Companion inside Snowflake (2 to 10 minutes the first time)
 --    It runs on Snowflake App Runtime. Where the account can't run it (trial
 --    accounts), the deploy's error is recorded and the written lab guide is
 --    built instead, as a Streamlit app that works on every account.
 -- -----------------------------------------------------
 USE ROLE HOL_ADMIN;
-USE WAREHOUSE BANKING_WH;
+-- its own warehouse: the data load holds BANKING_WH, and the build checks would queue behind it
+USE WAREHOUSE BANKING_SETUP_WH;
 EXECUTE IMMEDIATE $$
 BEGIN
     DELETE FROM BANKING_HOL.LAB.SETUP_CONFIG WHERE KEY = 'APP_SKIPPED';
@@ -125,12 +132,6 @@ EXCEPTION
     WHEN OTHER THEN RETURN 'Your defaults were not changed: ' || SQLERRM;
 END;
 $$;
-
--- -----------------------------------------------------
--- 6. Load the lab data in the background (about 10 minutes)
--- Follow it with: SELECT * FROM BANKING_HOL.LAB.SETUP_STATUS;
--- -----------------------------------------------------
-EXECUTE TASK BANKING_HOL.LAB.PROVISION_LAB;
 
 SELECT CASE
          WHEN (SELECT MAX(VALUE) FROM BANKING_HOL.LAB.SETUP_CONFIG WHERE KEY = 'APP_URL') IS NOT NULL
