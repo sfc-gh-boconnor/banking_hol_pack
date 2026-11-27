@@ -79,10 +79,10 @@ DECLARE
     -- some scripts end on another role (USE ROLE HOL_PARTICIPANT): put the caller's back after each step
     use_role   VARCHAR DEFAULT 'USE ROLE ' || CURRENT_ROLE();
 BEGIN
-    IF (scope_u NOT IN ('ALL', 'RETAIL', 'TEXT', 'DEMO', 'RESET', 'PROVISION')) THEN
-        RETURN 'Unknown scope ' || scope_u || ': use ALL, RETAIL, TEXT, DEMO, RESET or PROVISION';
+    IF (scope_u NOT IN ('ALL', 'RETAIL', 'TEXT', 'DEMO', 'RESET', 'PROVISION', 'DEMO_PROVISION', 'MODELS')) THEN
+        RETURN 'Unknown scope ' || scope_u || ': use ALL, RETAIL, TEXT, DEMO, RESET, PROVISION, DEMO_PROVISION or MODELS';
     END IF;
-    IF (search IS NULL AND scope_u = 'PROVISION') THEN
+    IF (search IS NULL AND scope_u IN ('PROVISION', 'DEMO_PROVISION')) THEN
         -- a new account: the Cortex Search lab is on unless provisioning switched it off
         SELECT COALESCE(MAX(TRY_TO_BOOLEAN(VALUE)), TRUE) INTO :search FROM BANKING_HOL.LAB.SETUP_CONFIG WHERE KEY = 'INCLUDE_SEARCH';
     END IF;
@@ -98,8 +98,9 @@ BEGIN
     -- [name, scopes, one SQL statement]; scripts run with EXECUTE IMMEDIATE FROM the repo
     all_steps := ARRAY_CONSTRUCT(
         ARRAY_CONSTRUCT('Fetch the lab repository',       'ALL,RETAIL,TEXT,DEMO,PROVISION', 'ALTER GIT REPOSITORY BANKING_HOL_SETUP.PUBLIC.HOL_REPO FETCH'),
-        -- PROVISION: a new account's setup, in the background (the app is built alongside it by
-        -- provision_account.sh: its remote build needs a user session, which a task doesn't have)
+        -- PROVISION: a new account's lab, in the background (the app is built alongside it by
+        -- provision_account.sh: its remote build needs a user session, which a task doesn't have).
+        -- When it's done, the tasks PROVISION_DEMO (DEMO_PROVISION) and PROVISION_MODELS (MODELS) run side by side.
         ARRAY_CONSTRUCT('Corporate payments source data', 'ALL,PROVISION',   'EXECUTE IMMEDIATE FROM ' || repo || 'setup/01_seed_synthetic_data.sql'),
         ARRAY_CONSTRUCT('Publish sources as Iceberg',     'ALL,PROVISION',   'EXECUTE IMMEDIATE FROM ' || repo || 'setup/02_publish_iceberg.sql'),
         ARRAY_CONSTRUCT('Copy branch travel times',       'ALL,PROVISION',   'COPY FILES INTO @BANKING_HOL.RETAIL.ORS_SEED FROM ' || repo || 'data/retail/'),
@@ -116,23 +117,25 @@ BEGIN
         ARRAY_CONSTRUCT('CoWork pack',                    'PROVISION',       'EXECUTE IMMEDIATE FROM ' || repo || 'setup/09_cowork_pack.sql'),
         ARRAY_CONSTRUCT('dbt project',                    'PROVISION',       'EXECUTE IMMEDIATE FROM ' || repo || 'setup/13_lab_objects.sql'),
         -- Executive demo: its own BANKING_DEMO database, cloned from the lab data and never part of the lab
-        ARRAY_CONSTRUCT('Demo: copy the lab data',        'DEMO,PROVISION',  'EXECUTE IMMEDIATE FROM ' || repo || 'setup/12a_demo_data.sql'),
-        ARRAY_CONSTRUCT('Demo: maps, branches, network',  'DEMO,PROVISION',  'EXECUTE IMMEDIATE FROM ' || repo || 'setup/12b_demo_insights.sql'),
-        ARRAY_CONSTRUCT('Demo: models and AI results',    'DEMO,PROVISION',  'EXECUTE IMMEDIATE FROM ' || repo || 'setup/12c_demo_ai.sql'),
-        ARRAY_CONSTRUCT('Demo: semantic views, assistant','DEMO,PROVISION',  'EXECUTE IMMEDIATE FROM ' || repo || 'setup/12d_demo_semantic_agent.sql'),
-        ARRAY_CONSTRUCT('Demo: live payment alert, inbox','DEMO,PROVISION',  'EXECUTE IMMEDIATE FROM ' || repo || 'setup/12f_demo_live_alert.sql'),
-        ARRAY_CONSTRUCT('Demo: regulation evidence',      'DEMO,PROVISION',  'EXECUTE IMMEDIATE FROM ' || repo || 'setup/12g_demo_regulation.sql'),
+        ARRAY_CONSTRUCT('Demo: copy the lab data',        'DEMO,DEMO_PROVISION', 'EXECUTE IMMEDIATE FROM ' || repo || 'setup/12a_demo_data.sql'),
+        ARRAY_CONSTRUCT('Demo: maps, branches, network',  'DEMO,DEMO_PROVISION', 'EXECUTE IMMEDIATE FROM ' || repo || 'setup/12b_demo_insights.sql'),
+        ARRAY_CONSTRUCT('Demo: models and AI results',    'DEMO,DEMO_PROVISION', 'EXECUTE IMMEDIATE FROM ' || repo || 'setup/12c_demo_ai.sql'),
+        ARRAY_CONSTRUCT('Demo: semantic views, assistant','DEMO,DEMO_PROVISION', 'EXECUTE IMMEDIATE FROM ' || repo || 'setup/12d_demo_semantic_agent.sql'),
+        ARRAY_CONSTRUCT('Demo: live payment alert, inbox','DEMO,DEMO_PROVISION', 'EXECUTE IMMEDIATE FROM ' || repo || 'setup/12f_demo_live_alert.sql'),
+        ARRAY_CONSTRUCT('Demo: regulation evidence',      'DEMO,DEMO_PROVISION', 'EXECUTE IMMEDIATE FROM ' || repo || 'setup/12g_demo_regulation.sql'),
         ARRAY_CONSTRUCT('Demo: search and name matching', 'DEMO_SEARCH',     'EXECUTE IMMEDIATE FROM ' || repo || 'setup/12e_demo_search.sql'),
         -- Facilitator reset: drop what attendees built, keep the data, app and demo
         ARRAY_CONSTRUCT('Remove attendee work',           'RESET',           'CALL BANKING_HOL.LAB.RESET_ATTENDEE_WORK()'),
         -- the Fast-forward button reads this: after a reset nothing is built any more
         ARRAY_CONSTRUCT('Clear catch-up history',         'RESET',           'DELETE FROM BANKING_HOL.LAB.CATCHUP_LOG'),
         -- wake and sleep tasks for the event times provisioning stored, if any
-        ARRAY_CONSTRUCT('Lab wake schedule',              'PROVISION',       'CALL BANKING_HOL.LAB.SCHEDULE_LAB_FROM_CONFIG()'));
+        ARRAY_CONSTRUCT('Lab wake schedule',              'PROVISION',       'CALL BANKING_HOL.LAB.SCHEDULE_LAB_FROM_CONFIG()'),
+        -- MODELS: the DS1 and DS4 models the Fast-forward catch-ups copy from (setup/10c_ml_reference.sql)
+        ARRAY_CONSTRUCT('Pre-train the DS1 and DS4 models', 'MODELS',        'EXECUTE IMMEDIATE FROM ' || repo || 'setup/10c_ml_reference.sql'));
     FOR i IN 0 TO ARRAY_SIZE(all_steps) - 1 DO
         IF (ARRAY_CONTAINS(scope_u::VARIANT, SPLIT(all_steps[i][1]::VARCHAR, ','))
-            OR (all_steps[i][1]::VARCHAR = 'SEARCH' AND search AND scope_u NOT IN ('DEMO', 'RESET'))
-            OR (all_steps[i][1]::VARCHAR = 'DEMO_SEARCH' AND search AND scope_u IN ('DEMO', 'PROVISION'))) THEN
+            OR (all_steps[i][1]::VARCHAR = 'SEARCH' AND search AND scope_u IN ('ALL', 'RETAIL', 'TEXT', 'PROVISION'))
+            OR (all_steps[i][1]::VARCHAR = 'DEMO_SEARCH' AND search AND scope_u IN ('DEMO', 'DEMO_PROVISION'))) THEN
             steps := ARRAY_APPEND(steps, all_steps[i]);
         END IF;
     END FOR;
@@ -155,7 +158,7 @@ BEGIN
         UPDATE BANKING_HOL.LAB.DATA_LOAD_LOG SET STATUS = 'DONE', FINISHED_AT = CURRENT_TIMESTAMP()
          WHERE RUN_ID = :run_id AND STEP_NO = :step_no;
     END FOR;
-    IF (scope_u NOT IN ('DEMO', 'RESET')) THEN
+    IF (scope_u IN ('ALL', 'RETAIL', 'TEXT', 'PROVISION')) THEN
         ALTER STAGE BANKING_HOL.RETAIL.FINCRIME_EVIDENCE REFRESH;
     END IF;
     RETURN IFF(scope_u = 'RESET', 'Reset attendee work', IFF(scope_u = 'PROVISION', 'Provisioned the lab', 'Loaded ' || scope_u || ' lab data')) || ': ' || step_total || ' steps in '
@@ -446,29 +449,64 @@ $$;
 CREATE OR REPLACE TASK BANKING_HOL.LAB.PROVISION_LAB
     WAREHOUSE = BANKING_WH
     USER_TASK_TIMEOUT_MS = 10800000
-    COMMENT = 'Lab setup in the background: lab data, packs, dbt project, executive demo, wake schedule'
+    COMMENT = 'Lab setup in the background: lab data, packs, dbt project, wake schedule; then the demo and models tasks'
 AS CALL BANKING_HOL.LAB.LOAD_LAB_DATA('PROVISION');
 
+-- After the lab data, side by side: the executive demo clones it, the reference models train on it.
+-- The root stays unscheduled; EXECUTE TASK PROVISION_LAB runs these too because they're resumed.
+CREATE OR REPLACE TASK BANKING_HOL.LAB.PROVISION_DEMO
+    WAREHOUSE = BANKING_WH
+    USER_TASK_TIMEOUT_MS = 10800000
+    COMMENT = 'Lab setup in the background: the executive demo (BANKING_DEMO), after the lab data'
+    AFTER BANKING_HOL.LAB.PROVISION_LAB
+AS CALL BANKING_HOL.LAB.LOAD_LAB_DATA('DEMO_PROVISION');
+
+CREATE OR REPLACE TASK BANKING_HOL.LAB.PROVISION_MODELS
+    WAREHOUSE = BANKING_WH
+    USER_TASK_TIMEOUT_MS = 3600000
+    COMMENT = 'Lab setup in the background: the DS1 and DS4 reference models, after the lab data'
+    AFTER BANKING_HOL.LAB.PROVISION_LAB
+AS CALL BANKING_HOL.LAB.LOAD_LAB_DATA('MODELS');
+
+ALTER TASK BANKING_HOL.LAB.PROVISION_DEMO RESUME;
+ALTER TASK BANKING_HOL.LAB.PROVISION_MODELS RESUME;
+
 -- Where provisioning has got to, inside Snowflake: SELECT * FROM BANKING_HOL.LAB.SETUP_STATUS
+-- One row per step of the latest lab run (PROVISION) and of the demo and models runs that followed it,
+-- each tagged with its PART: Lab, Executive demo or Reference models. (Accounts set up before the
+-- split have their demo steps in the lab run; the Demo: name still puts them in Executive demo.)
 CREATE OR REPLACE VIEW BANKING_HOL.LAB.SETUP_STATUS
-    COMMENT = 'Lab setup progress: one row per step of the latest provisioning run'
+    COMMENT = 'Lab setup progress: one row per step of the latest provisioning runs, by part'
 AS
-WITH latest AS (
-    SELECT RUN_ID FROM BANKING_HOL.LAB.DATA_LOAD_LOG WHERE SCOPE = 'PROVISION'
+WITH lab AS (
+    SELECT RUN_ID, MIN(STARTED_AT) AS AT FROM BANKING_HOL.LAB.DATA_LOAD_LOG WHERE SCOPE = 'PROVISION'
     GROUP BY RUN_ID ORDER BY MAX(STARTED_AT) DESC NULLS LAST LIMIT 1
+), after_lab AS (
+    SELECT l.RUN_ID FROM BANKING_HOL.LAB.DATA_LOAD_LOG l CROSS JOIN lab
+     WHERE l.SCOPE IN ('DEMO_PROVISION', 'MODELS')
+     GROUP BY l.RUN_ID, l.SCOPE
+    HAVING MIN(l.STARTED_AT) IS NULL OR MIN(l.STARTED_AT) >= MAX(lab.AT)
+    QUALIFY ROW_NUMBER() OVER (PARTITION BY l.SCOPE ORDER BY MAX(l.STARTED_AT) DESC NULLS LAST) = 1
+), runs AS (
+    SELECT RUN_ID FROM lab UNION ALL SELECT RUN_ID FROM after_lab
 )
-SELECT l.STEP_NO, l.STEP_TOTAL, l.STEP_NAME, l.STATUS, l.STARTED_AT, l.FINISHED_AT,
+SELECT CASE WHEN l.SCOPE = 'MODELS' THEN 'Reference models'
+            WHEN l.STEP_NAME LIKE 'Demo:%' THEN 'Executive demo'
+            ELSE 'Lab' END AS PART,
+       l.SCOPE, l.STEP_NO, l.STEP_TOTAL, l.STEP_NAME, l.STATUS, l.STARTED_AT, l.FINISHED_AT,
        ROUND(DATEDIFF('second', l.STARTED_AT, COALESCE(l.FINISHED_AT, CURRENT_TIMESTAMP())) / 60, 1) AS MINUTES,
        l.ERROR_MESSAGE
-  FROM BANKING_HOL.LAB.DATA_LOAD_LOG l JOIN latest USING (RUN_ID)
- ORDER BY l.STEP_NO;
+  FROM BANKING_HOL.LAB.DATA_LOAD_LOG l JOIN runs USING (RUN_ID)
+ ORDER BY DECODE(PART, 'Lab', 1, 'Executive demo', 2, 3), l.STEP_NO;
 
--- One row: READY, RUNNING, FAILED or NOT_STARTED, with the app URL once it's deployed.
+-- One row. STATUS is the lab itself: READY, RUNNING, FAILED or NOT_STARTED, and the Lab Companion
+-- opens on READY. The executive demo and the reference models build after it, side by side:
+-- DEMO_STATUS and MODELS_STATUS are WAITING, RUNNING, READY or FAILED, and ALL_READY is everything.
 -- provision_account.sh records SETUP_REQUESTED_AT before it builds the app, so between then and the
 -- task's first logged step the account reads RUNNING ('Starting the lab setup'), not NOT_STARTED
 -- (which the Lab Companion treats as an older account and opens straight away).
 CREATE OR REPLACE VIEW BANKING_HOL.LAB.SETUP_SUMMARY
-    COMMENT = 'Lab setup in one row: status, steps done, current step, app URL'
+    COMMENT = 'Lab setup in one row: lab status, demo and reference model status, app URL'
 AS
 WITH requested AS (
     SELECT MAX(TRY_TO_TIMESTAMP_LTZ(VALUE)) AS AT FROM BANKING_HOL.LAB.SETUP_CONFIG WHERE KEY = 'SETUP_REQUESTED_AT'
@@ -481,20 +519,58 @@ WITH requested AS (
            COUNT(s.STEP_NO)                                            AS STEP_TOTAL,
            MAX(IFF(s.STATUS IN ('RUNNING', 'FAILED'), s.STEP_NAME, NULL)) AS CURRENT_STEP,
            MAX(s.ERROR_MESSAGE)                                        AS ERROR_MESSAGE,
-           MIN(s.STARTED_AT)                                           AS STARTED_AT,
-           BOOLAND_AGG(s.STEP_NAME NOT LIKE 'Demo:%' OR s.STATUS = 'DONE') AS DEMO_READY
-      FROM BANKING_HOL.LAB.SETUP_STATUS s
+           MIN(s.STARTED_AT)                                           AS STARTED_AT
+      FROM BANKING_HOL.LAB.SETUP_STATUS s WHERE s.PART = 'Lab'
+), parts AS (
+    SELECT COUNT_IF(PART = 'Executive demo')                           AS DEMO_TOTAL,
+           COUNT_IF(PART = 'Executive demo' AND STATUS = 'DONE')       AS DEMO_DONE,
+           COUNT_IF(PART = 'Executive demo' AND STATUS = 'FAILED')     AS DEMO_FAILED,
+           MAX(IFF(PART = 'Executive demo' AND STATUS = 'FAILED', ERROR_MESSAGE, NULL)) AS DEMO_ERROR,
+           COUNT_IF(PART = 'Reference models')                         AS MODELS_TOTAL,
+           COUNT_IF(PART = 'Reference models' AND STATUS = 'DONE')     AS MODELS_DONE,
+           COUNT_IF(PART = 'Reference models' AND STATUS = 'FAILED')   AS MODELS_FAILED,
+           MAX(IFF(PART = 'Reference models' AND STATUS = 'FAILED', ERROR_MESSAGE, NULL)) AS MODELS_ERROR,
+           -- set up before the split: the demo was in the lab run and the models were built outside it
+           COUNT_IF(SCOPE = 'PROVISION' AND PART = 'Executive demo') > 0 AS ONE_RUN
+      FROM BANKING_HOL.LAB.SETUP_STATUS
+), summary AS (
+    SELECT IFF(r.AT IS NOT NULL AND (st.STEP_TOTAL = 0 OR st.STARTED_AT < r.AT), TRUE, FALSE) AS RESTARTING,
+           st.*, p.*
+      FROM steps st CROSS JOIN parts p CROSS JOIN requested r
+), parts_status AS (
+    SELECT s.*,
+           CASE WHEN s.RESTARTING THEN 'WAITING'
+                WHEN s.DEMO_FAILED > 0 THEN 'FAILED'
+                WHEN s.DEMO_TOTAL > 0 AND s.DEMO_DONE = s.DEMO_TOTAL THEN 'READY'
+                WHEN s.DEMO_TOTAL > 0 THEN 'RUNNING'
+                WHEN s.STATUS = 'NOT_STARTED' THEN 'READY'
+                ELSE 'WAITING' END AS DEMO_STATUS,
+           CASE WHEN s.RESTARTING THEN 'WAITING'
+                WHEN s.MODELS_FAILED > 0 THEN 'FAILED'
+                WHEN s.MODELS_TOTAL > 0 AND s.MODELS_DONE = s.MODELS_TOTAL THEN 'READY'
+                WHEN s.MODELS_TOTAL > 0 THEN 'RUNNING'
+                WHEN s.STATUS = 'NOT_STARTED' OR s.ONE_RUN THEN 'READY'
+                ELSE 'WAITING' END AS MODELS_STATUS
+      FROM summary s
 )
--- a requested setup whose run hasn't logged a step yet (or whose last run is older than the request)
-SELECT IFF(r.AT IS NOT NULL AND (st.STEP_TOTAL = 0 OR st.STARTED_AT < r.AT), 'RUNNING', st.STATUS) AS STATUS,
-       IFF(r.AT IS NOT NULL AND (st.STEP_TOTAL = 0 OR st.STARTED_AT < r.AT), 0, st.STEPS_DONE) AS STEPS_DONE,
-       st.STEP_TOTAL,
-       IFF(r.AT IS NOT NULL AND (st.STEP_TOTAL = 0 OR st.STARTED_AT < r.AT), 'Starting the lab setup', st.CURRENT_STEP) AS CURRENT_STEP,
-       IFF(r.AT IS NOT NULL AND (st.STEP_TOTAL = 0 OR st.STARTED_AT < r.AT), NULL, st.ERROR_MESSAGE) AS ERROR_MESSAGE,
-       st.STARTED_AT,
-       st.DEMO_READY,
+SELECT IFF(RESTARTING, 'RUNNING', STATUS)                 AS STATUS,
+       IFF(RESTARTING, 0, STEPS_DONE)                     AS STEPS_DONE,
+       STEP_TOTAL,
+       IFF(RESTARTING, 'Starting the lab setup', CURRENT_STEP) AS CURRENT_STEP,
+       IFF(RESTARTING, NULL, ERROR_MESSAGE)               AS ERROR_MESSAGE,
+       STARTED_AT,
+       DEMO_STATUS = 'READY'                              AS DEMO_READY,
+       DEMO_STATUS,
+       IFF(RESTARTING, 0, DEMO_DONE)                      AS DEMO_STEPS_DONE,
+       DEMO_TOTAL                                         AS DEMO_STEP_TOTAL,
+       DEMO_ERROR,
+       MODELS_STATUS = 'READY'                            AS MODELS_READY,
+       MODELS_STATUS,
+       MODELS_ERROR,
+       NOT RESTARTING AND STATUS IN ('READY', 'NOT_STARTED')
+           AND DEMO_STATUS = 'READY' AND MODELS_STATUS = 'READY' AS ALL_READY,
        (SELECT MAX(VALUE) FROM BANKING_HOL.LAB.SETUP_CONFIG WHERE KEY = 'APP_URL') AS APP_URL
-  FROM steps st CROSS JOIN requested r;
+  FROM parts_status;
 
 GRANT SELECT ON VIEW BANKING_HOL.LAB.SETUP_STATUS  TO ROLE HOL_PARTICIPANT;
 GRANT SELECT ON VIEW BANKING_HOL.LAB.SETUP_SUMMARY TO ROLE HOL_PARTICIPANT;

@@ -33,7 +33,7 @@ The card shows a bar and the current step, driven by `CALL BANKING_HOL.LAB.CATCH
 
 Never make an attendee wait for training. Anything slow is trained **once at provisioning** and copied by the catch-up.
 
-- `setup/10c_ml_reference.sql` (a `LOAD_LAB_DATA` step) trains with the module's own answer key and snapshots the result into `BANKING_HOL.ML_REFERENCE`: models (`MODEL_VERSIONS` lists the versions and which catch-up hands them out), result tables, and experiment runs (`EXPERIMENT_RUNS`). It then empties `BANKING_HOL.ML` so attendees start clean.
+- `setup/10c_ml_reference.sql` (the `MODELS` scope of `LOAD_LAB_DATA`, run by the `PROVISION_MODELS` task after the lab data; the app holds DS1, DS4 and their Fast-forwards until it's done, because it trains in `BANKING_HOL.ML`) trains with the module's own answer key and snapshots the result into `BANKING_HOL.ML_REFERENCE`: models (`MODEL_VERSIONS` lists the versions and which catch-up hands them out), result tables, and experiment runs (`EXPERIMENT_RUNS`). It then empties `BANKING_HOL.ML` so attendees start clean.
 - The training scripts live in `setup/ml_reference/train_*.sql`, not in `setup/catchup/` (that folder is what the app lists).
 - The catch-up copies with `CREATE MODEL ... WITH VERSION v FROM MODEL ML_REFERENCE...` and `ALTER MODEL ... ADD VERSION`, copies the tables with CTAS, and re-logs experiment runs with `setup/ml_reference/restore_runs.py` (runs cannot be copied; DS3 reads them).
 - `HOL_PARTICIPANT` must own the reference models: Snowflake only lets a model's owner copy it.

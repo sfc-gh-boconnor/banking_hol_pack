@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { formatRelative } from "@/lib/format"
 import { cn } from "@/lib/utils"
+import { MODEL_CATCHUPS, useBackgroundBuild } from "@/components/lab/setup-progress"
 
 type Run = { CATCHUP: string; STATUS: "RUNNING" | "DONE" | "FAILED"; STARTED_AT: string; FINISHED_AT: string | null; ERROR_MESSAGE: string | null; STEP_NO: number | null; STEP_TOTAL: number | null; STEP_NAME: string | null; ELAPSED_S: number }
 
@@ -43,6 +44,9 @@ export function CatchupCard({ catchups }: { catchups: string[] }) {
   })
 
   const runs = Object.fromEntries((status.data?.runs ?? []).map((r) => [r.CATCHUP, r]))
+  // DS1/DS4 catch-ups build in BANKING_HOL.ML, which the account's reference model build is still using
+  const { labOpen, modelsReady } = useBackgroundBuild()
+  const waitForModels = labOpen && !modelsReady && catchups.some((c) => MODEL_CATCHUPS.includes(c))
   const running = catchups.some((c) => runs[c]?.STATUS === "RUNNING") || (queued && !catchups.every((c) => runs[c]?.STATUS === "DONE" || runs[c]?.STATUS === "FAILED"))
   const allDone = catchups.every((c) => runs[c]?.STATUS === "DONE")
   const failed = catchups.map((c) => runs[c]).find((r) => r?.STATUS === "FAILED")
@@ -108,9 +112,14 @@ export function CatchupCard({ catchups }: { catchups: string[] }) {
           <p className="max-h-32 overflow-auto rounded-md bg-destructive/10 p-2 font-mono text-xs text-destructive">{failed.ERROR_MESSAGE.slice(0, 600)}</p>
         )}
         {(start.isError || status.isError) && <p className="text-sm text-destructive">{start.error?.message ?? status.error?.message}</p>}
-        <Button onClick={() => { setQueued(false); start.mutate() }} disabled={running || start.isPending}>
-          {running || start.isPending ? <Loader2 className="size-4 animate-spin" /> : <FastForward className="size-4" />}
-          {running || start.isPending ? "Building, you can leave this page open" : allDone ? "Run again" : failed ? "Try again" : "Fast-forward"}
+        {waitForModels && !running && (
+          <p className="rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-xs">
+            Your account is still pre-training the DS1 and DS4 models (about 3 minutes). Fast-forward opens when they&apos;re ready, and then takes about a minute.
+          </p>
+        )}
+        <Button onClick={() => { setQueued(false); start.mutate() }} disabled={running || start.isPending || waitForModels}>
+          {running || start.isPending || waitForModels ? <Loader2 className="size-4 animate-spin" /> : <FastForward className="size-4" />}
+          {running || start.isPending ? "Building, you can leave this page open" : waitForModels ? "Waiting for the reference models" : allDone ? "Run again" : failed ? "Try again" : "Fast-forward"}
         </Button>
       </CardContent>
     </Card>

@@ -25,7 +25,7 @@ If Cortex Code can read neither, tell the user these steps and stop.
 
 ## Reading the lab files
 
-The workflow below opens `INSTALL.sql` and `setup/10c_ml_reference.sql`. Read them from the Workspace files, or from the repository through the GitHub connector. Once `INSTALL.sql` section 2 has run (it creates the `BANKING_HOL.LAB.READ_TEXT_FILE` format), you can also read any file with SQL, one line per row, in order:
+The workflow below opens `INSTALL.sql`. Read them from the Workspace files, or from the repository through the GitHub connector. Once `INSTALL.sql` section 2 has run (it creates the `BANKING_HOL.LAB.READ_TEXT_FILE` format), you can also read any file with SQL, one line per row, in order:
 
 ```sql
 SELECT $1 FROM @BANKING_HOL_SETUP.PUBLIC.HOL_REPO/branches/main/setup/10c_ml_reference.sql (FILE_FORMAT => 'BANKING_HOL.LAB.READ_TEXT_FILE');
@@ -83,23 +83,18 @@ Open `INSTALL.sql` and run its statements **one by one**, in order:
 
 The last statement prints the next step: the Lab Companion URL, or the written lab guide when the account can't run apps.
 
-### 4. Wait for the lab data
+### 4. Wait for the setup
 
-`EXECUTE TASK BANKING_HOL.LAB.PROVISION_LAB` loads the data in the background (about 10 to 15 minutes). Check progress when the user asks, or every few minutes:
-
+`EXECUTE TASK BANKING_HOL.LAB.PROVISION_LAB` starts a background task graph: the lab data first (about 4 minutes), then the executive demo and the DS1/DS4 reference models side by side (about 10 minutes more). Nothing to run by hand. Check progress when the user asks, or every few minutes:
 ```sql
-SELECT STATUS, STEPS_DONE, STEP_TOTAL, CURRENT_STEP, ERROR_MESSAGE FROM BANKING_HOL.LAB.SETUP_SUMMARY;
+SELECT STATUS, STEPS_DONE, STEP_TOTAL, CURRENT_STEP, DEMO_STATUS, MODELS_STATUS, ALL_READY, ERROR_MESSAGE, DEMO_ERROR, MODELS_ERROR FROM BANKING_HOL.LAB.SETUP_SUMMARY;
 ```
-- Carry on when `STATUS` is `READY`.
-- If it's `FAILED`, show `SELECT STEP_NO, STEP_NAME, STATUS, ERROR_MESSAGE FROM BANKING_HOL.LAB.SETUP_STATUS WHERE STATUS <> 'DONE' ORDER BY STEP_NO;`, and stop. A restart is `EXECUTE TASK BANKING_HOL.LAB.PROVISION_LAB;` once the cause is fixed.
+- `STATUS` `READY` means the lab is open: tell the user they can start (except DS1 and DS4, until `MODELS_STATUS` is `READY`). The Lab Companion shows what is still building.
+- Carry on to step 6 when `ALL_READY` is true. You can create the attendee earlier.
+- If anything is `FAILED`, show `SELECT PART, STEP_NO, STEP_NAME, STATUS, ERROR_MESSAGE FROM BANKING_HOL.LAB.SETUP_STATUS WHERE STATUS <> 'DONE';`, and stop. Once the cause is fixed: the lab is `EXECUTE TASK BANKING_HOL.LAB.PROVISION_LAB;` (reruns everything), the demo alone is `CALL BANKING_HOL.LAB.LOAD_LAB_DATA('DEMO_PROVISION');` and the models alone are `CALL BANKING_HOL.LAB.LOAD_LAB_DATA('MODELS');`.
 
-### 5. Pre-train the reference models
+### 5. Check the reference models
 
-So the DS1 and DS4 Fast-forwards copy a model instead of training one (about 4 minutes).
-
-Open `setup/10c_ml_reference.sql` and run its statements one by one, including its `USE ROLE` lines. Don't run the whole file with `EXECUTE IMMEDIATE FROM`: nested, its model checks fail.
-
-Then check:
 ```sql
 SELECT COUNT(*) AS REFERENCE_MODELS FROM BANKING_HOL.INFORMATION_SCHEMA.MODEL_VERSIONS WHERE SCHEMA_NAME = 'ML_REFERENCE';
 ```

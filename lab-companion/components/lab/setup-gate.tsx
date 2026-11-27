@@ -2,30 +2,19 @@
 
 import type React from "react"
 import { usePathname } from "next/navigation"
-import { useQuery } from "@tanstack/react-query"
 import { CheckCircle2, Circle, Loader2, XCircle } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
-
-type Step = { STEP_NO: number; STEP_NAME: string; STATUS: string; MINUTES: number | null; ERROR_MESSAGE: string | null }
-type Summary = { STATUS: string; STEPS_DONE: number; STEP_TOTAL: number; CURRENT_STEP: string | null; ERROR_MESSAGE: string | null }
-type SetupStatus = { summary: Summary | null; steps: Step[] }
+import { useSetupStatus } from "@/components/lab/setup-progress"
 
 /**
  * Covers the app while the account's background lab setup (LAB.PROVISION_LAB) runs, so attendees
- * don't start a module before its data exists. Opens on READY, and on accounts set up the older way.
+ * don't start a module before its data exists. Opens when the lab part is READY (the executive demo and
+ * reference models carry on building after it: see setup-progress.tsx), and on accounts set up the older way.
  */
 export function SetupGate({ children }: { children: React.ReactNode }) {
   const facilitator = usePathname()?.startsWith("/facilitator") ?? false
-  const status = useQuery<SetupStatus>({
-    queryKey: ["setup-status"],
-    queryFn: async () => (await fetch("/api/setup-status")).json(),
-    refetchInterval: (q) => {
-      const s = q.state.data?.summary?.STATUS
-      return s === "RUNNING" || s === "FAILED" ? 5_000 : false
-    },
-    refetchIntervalInBackground: true,
-  })
+  const status = useSetupStatus()
   const summary = status.data?.summary
   if (facilitator || !summary || summary.STATUS === "READY" || summary.STATUS === "NOT_STARTED") return <>{children}</>
 
@@ -40,8 +29,8 @@ export function SetupGate({ children }: { children: React.ReactNode }) {
             {failed
               ? "A setup step failed. Ask your facilitator: they can see the error below and restart the setup."
               : summary.STEP_TOTAL === 0
-                ? "Your account is starting to build the lab data, packs and demo inside Snowflake. This page opens the lab when it's done; you can also follow it in Snowsight with SELECT * FROM BANKING_HOL.LAB.SETUP_STATUS."
-                : `Your account is building the lab data, packs and demo inside Snowflake (${summary.STEPS_DONE} of ${summary.STEP_TOTAL} steps). This page opens the lab when it's done; you can also follow it in Snowsight with SELECT * FROM BANKING_HOL.LAB.SETUP_STATUS.`}
+                ? "Your account is starting to build the lab data and packs inside Snowflake. This page opens the lab when they're in; the executive demo and the DS1/DS4 reference models carry on building after that. You can also follow it in Snowsight with SELECT * FROM BANKING_HOL.LAB.SETUP_STATUS."
+                : `Your account is building the lab data and packs inside Snowflake (${summary.STEPS_DONE} of ${summary.STEP_TOTAL} steps). This page opens the lab when they're in; the executive demo and the DS1/DS4 reference models carry on building after that. You can also follow it in Snowsight with SELECT * FROM BANKING_HOL.LAB.SETUP_STATUS.`}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -49,7 +38,7 @@ export function SetupGate({ children }: { children: React.ReactNode }) {
             <div className={cn("h-full transition-all", failed ? "bg-destructive" : "bg-primary")} style={{ width: `${pct}%` }} />
           </div>
           <ol className="space-y-1.5 text-sm">
-            {status.data?.steps.map((s) => (
+            {status.data?.steps.filter((s) => !s.PART || s.PART === "Lab").map((s) => (
               <li key={s.STEP_NO} className={cn("flex items-center gap-2", s.STATUS === "PENDING" && "text-muted-foreground")}>
                 {s.STATUS === "DONE" ? <CheckCircle2 className="size-4 text-green-600" />
                   : s.STATUS === "RUNNING" ? <Loader2 className="size-4 animate-spin" />

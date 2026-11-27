@@ -6,15 +6,17 @@
 #   ./setup/provision_account.sh <snow-connection-name> [--wait-all] [--with-reference-build]
 #
 # Does the minimum from outside the account (about 1 minute of SQL), starts the lab setup INSIDE
-# Snowflake as a background task (LAB.PROVISION_LAB), then builds the Lab Companion inside
-# Snowflake (LAB.DEPLOY_LAB_COMPANION, ~2-5 min) and prints its URL. The lab data, packs, dbt
-# project, executive demo and wake schedule carry on in the account; attendees who open the app
-# early see a "Setting up your lab" screen. Progress, from Snowsight:
-#   SELECT * FROM BANKING_HOL.LAB.SETUP_STATUS;   -- one row per step
-#   SELECT * FROM BANKING_HOL.LAB.SETUP_SUMMARY;  -- READY / RUNNING / FAILED
+# Snowflake as a background task graph (LAB.PROVISION_LAB, then PROVISION_DEMO and PROVISION_MODELS
+# side by side), then builds the Lab Companion inside Snowflake (LAB.DEPLOY_LAB_COMPANION, ~2-5 min)
+# and prints its URL. The lab data, packs, dbt project and wake schedule load first (~4 min); the app
+# opens then, while the executive demo and the DS1/DS4 reference models carry on building and the app
+# says so. Attendees who open the app before the lab data is in see "Setting up your lab". Progress:
+#   SELECT * FROM BANKING_HOL.LAB.SETUP_STATUS;   -- one row per step, by part
+#   SELECT * FROM BANKING_HOL.LAB.SETUP_SUMMARY;  -- lab STATUS, DEMO_STATUS, MODELS_STATUS, ALL_READY
 # To restart a failed setup: EXECUTE TASK BANKING_HOL.LAB.PROVISION_LAB;
+# Just the demo or the models, as HOL_ADMIN: CALL BANKING_HOL.LAB.LOAD_LAB_DATA('DEMO_PROVISION' | 'MODELS');
 #
-#   --wait-all              also wait for the whole setup to finish
+#   --wait-all              also wait for the whole setup (demo and models too) to finish
 #   --with-reference-build  (implies --wait-all) then pre-build the analytics layer, semantic
 #                           views and agents (Payments Ops pathway or demos)
 #
@@ -54,8 +56,10 @@ wait_for() {
 import json,sys
 r=json.load(sys.stdin)[0]
 if r['STATUS']=='FAILED': print('FAILED|'+str(r.get('CURRENT_STEP'))+': '+str(r.get('ERROR_MESSAGE')))
+elif r.get('DEMO_STATUS')=='FAILED': print('FAILED|executive demo: '+str(r.get('DEMO_ERROR')))
+elif r.get('MODELS_STATUS')=='FAILED': print('FAILED|reference models: '+str(r.get('MODELS_ERROR')))
 elif $cond: print('OK|')
-else: print('WAIT|'+str(r.get('STEPS_DONE'))+' of '+str(r.get('STEP_TOTAL'))+', now: '+str(r.get('CURRENT_STEP')))
+else: print('WAIT|lab '+str(r.get('STEPS_DONE'))+' of '+str(r.get('STEP_TOTAL'))+', now: '+str(r.get('CURRENT_STEP'))+'; demo '+str(r.get('DEMO_STATUS'))+'; models '+str(r.get('MODELS_STATUS')))
 " 2>/dev/null || echo "WAIT|status not readable yet")
     case "$out" in
       OK*) return 0 ;;
@@ -125,15 +129,10 @@ snow sql -c "$CONN" --role HOL_ADMIN -q "DROP STREAMLIT IF EXISTS BANKING_HOL.LA
   || echo "  (could not remove the guide Streamlit app: see /tmp/hol_guide_drop.log)"
 
 if (( WAIT_ALL )); then
-  step "Waiting for the rest of the setup (lab data, packs, dbt, demo: ~10-15 min)"
-  wait_for "r['STATUS']=='READY'" 3600 "the lab setup"
-  echo "  Lab setup READY"
+  step "Waiting for the rest of the setup (lab data ~4 min, then the demo and reference models side by side ~10 min)"
+  wait_for "r.get('ALL_READY') is True" 3600 "the lab setup"
+  echo "  Lab setup READY: lab, executive demo and reference models"
 fi
-# The pre-trained DS1/DS4 models run here, not inside the loader: nested EXECUTE IMMEDIATE
-# FROM loses LAST_QUERY_ID and fails. They need the lab data loaded first.
-step "Waiting for the lab data, then pre-training the DS1 and DS4 models (~15 min)"
-wait_for "r['STATUS']=='READY'" 3600 "the lab setup"
-run_sql setup/10c_ml_reference.sql
 if (( REFERENCE_BUILD )); then
   step "Reference build (catch-up scripts, DA2, OPS1)"
   run_sql setup/catchup/core_analytics.sql

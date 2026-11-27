@@ -102,14 +102,14 @@ bash setup/provision_account.sh <connection> --wait-all
 What it does, in order:
 - Creates the roles, database, warehouse and Git repository link, then starts the lab setup as the background task `BANKING_HOL.LAB.PROVISION_LAB`.
 - Builds the Lab Companion inside Snowflake (`LAB.DEPLOY_LAB_COMPANION`) at the same time, on its own warehouse `BANKING_SETUP_WH`, and prints its URL.
-- With `--wait-all`, waits for `SETUP_SUMMARY` to read `READY`. That takes about 10 to 15 minutes.
-- Then runs `setup/10c_ml_reference.sql` as `HOL_ADMIN` to pre-train the DS1 and DS4 models. That takes about 4 minutes more. It runs after the loader because a nested run fails inside the loader.
+- The task graph loads the lab data first (about 4 minutes; the app opens then), then builds the executive demo (`PROVISION_DEMO`) and pre-trains the DS1 and DS4 reference models (`PROVISION_MODELS`) side by side, about 10 minutes more. The app shows what is still building, and holds DS1 and DS4 until the models are ready.
+- With `--wait-all`, waits for `SETUP_SUMMARY.ALL_READY`.
 
 Progress, from Snowsight or the CLI as `ACCOUNTADMIN`:
-- `SELECT * FROM BANKING_HOL.LAB.SETUP_STATUS;`: one row per step.
-- `SELECT * FROM BANKING_HOL.LAB.SETUP_SUMMARY;`: `READY`, `RUNNING` or `FAILED`.
+- `SELECT * FROM BANKING_HOL.LAB.SETUP_STATUS;`: one row per step, with its `PART` (Lab, Executive demo, Reference models).
+- `SELECT * FROM BANKING_HOL.LAB.SETUP_SUMMARY;`: the lab `STATUS` (`READY`, `RUNNING` or `FAILED`), `DEMO_STATUS`, `MODELS_STATUS` and `ALL_READY`.
 
-If a step fails, read its error in `SETUP_STATUS`, fix the cause, then restart with `EXECUTE TASK BANKING_HOL.LAB.PROVISION_LAB;`. The loader cannot resume, so a restart redoes every step.
+If a step fails, read its error in `SETUP_STATUS`, fix the cause, then restart with `EXECUTE TASK BANKING_HOL.LAB.PROVISION_LAB;`. The loader cannot resume, so a restart redoes every step. A failed demo or models part can rerun on its own as `HOL_ADMIN`: `CALL BANKING_HOL.LAB.LOAD_LAB_DATA('DEMO_PROVISION');` or `('MODELS')`.
 
 ### 4. Redeploy local app changes (optional)
 

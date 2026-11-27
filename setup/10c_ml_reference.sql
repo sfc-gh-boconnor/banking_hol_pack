@@ -10,7 +10,9 @@
 --
 -- HOL_PARTICIPANT owns the reference models: Snowflake only lets the owner of a model copy it.
 -- Attendee work in ML is left empty: this script removes what training put there.
--- Loaded by LOAD_LAB_DATA (ALL, RETAIL, PROVISION). Takes about 4 minutes. Needs 10_retail_text_seed.sql.
+-- Runs in the background after the lab data (LOAD_LAB_DATA('MODELS'), task PROVISION_MODELS),
+-- alongside the executive demo. Takes about 3 minutes. Needs 10_retail_text_seed.sql. It trains in
+-- BANKING_HOL.ML, so the Lab Companion asks attendees to wait for it before starting DS1 or DS4.
 -- =====================================================
 USE ROLE HOL_ADMIN;
 USE WAREHOUSE BANKING_WH;
@@ -47,13 +49,15 @@ DECLARE
     seq INTEGER;
     copied INTEGER DEFAULT 0;
 BEGIN
+    -- each SHOW is read through its own RESULTSET, not RESULT_SCAN(LAST_QUERY_ID()): this runs nested
+    -- inside the loader's task, where LAST_QUERY_ID() doesn't point at the SHOW
     FOR i IN 0 TO ARRAY_SIZE(models) - 1 DO
         m := GET(models, i)::VARCHAR;
-        EXECUTE IMMEDIATE 'SHOW MODELS LIKE ''' || :m || ''' IN SCHEMA BANKING_HOL.ML';
-        SELECT COUNT(*) INTO :n FROM TABLE(RESULT_SCAN(LAST_QUERY_ID()));
+        LET found RESULTSET := (EXECUTE IMMEDIATE 'SHOW MODELS LIKE ''' || :m || ''' IN SCHEMA BANKING_HOL.ML');
+        SELECT COUNT(*) INTO :n FROM TABLE(found);
         IF (n > 0) THEN
-            EXECUTE IMMEDIATE 'SHOW VERSIONS IN MODEL BANKING_HOL.ML.' || :m;
-            LET rs RESULTSET := (SELECT "name" AS V, "is_default_version" AS D FROM TABLE(RESULT_SCAN(LAST_QUERY_ID())) ORDER BY "created_on");
+            LET vers RESULTSET := (EXECUTE IMMEDIATE 'SHOW VERSIONS IN MODEL BANKING_HOL.ML.' || :m);
+            LET rs RESULTSET := (SELECT "name" AS V, "is_default_version" AS D FROM TABLE(vers) ORDER BY "created_on");
             LET cur CURSOR FOR rs;
             FOR r IN cur DO
                 v := r.V;
@@ -76,16 +80,16 @@ BEGIN
     END FOR;
     FOR i IN 0 TO ARRAY_SIZE(experiments) - 1 DO
         e := GET(experiments, i)::VARCHAR;
-        EXECUTE IMMEDIATE 'SHOW EXPERIMENTS LIKE ''' || :e || ''' IN SCHEMA BANKING_HOL.ML';
-        SELECT COUNT(*) INTO :n FROM TABLE(RESULT_SCAN(LAST_QUERY_ID()));
+        LET exps RESULTSET := (EXECUTE IMMEDIATE 'SHOW EXPERIMENTS LIKE ''' || :e || ''' IN SCHEMA BANKING_HOL.ML');
+        SELECT COUNT(*) INTO :n FROM TABLE(exps);
         IF (n > 0) THEN
-            EXECUTE IMMEDIATE 'SHOW RUN METRICS IN EXPERIMENT BANKING_HOL.ML.' || :e;
+            LET metrics RESULTSET := (EXECUTE IMMEDIATE 'SHOW RUN METRICS IN EXPERIMENT BANKING_HOL.ML.' || :e);
             INSERT INTO BANKING_HOL.ML_REFERENCE.EXPERIMENT_RUNS
-                SELECT :CATCHUP, :e, "run_name", 'METRIC', "name", "value"::VARCHAR FROM TABLE(RESULT_SCAN(LAST_QUERY_ID()))
+                SELECT :CATCHUP, :e, "run_name", 'METRIC', "name", "value"::VARCHAR FROM TABLE(metrics)
                 WHERE "run_name" NOT IN (SELECT RUN_NAME FROM BANKING_HOL.ML_REFERENCE.EXPERIMENT_RUNS WHERE EXPERIMENT = :e);
-            EXECUTE IMMEDIATE 'SHOW RUN PARAMETERS IN EXPERIMENT BANKING_HOL.ML.' || :e;
+            LET params RESULTSET := (EXECUTE IMMEDIATE 'SHOW RUN PARAMETERS IN EXPERIMENT BANKING_HOL.ML.' || :e);
             INSERT INTO BANKING_HOL.ML_REFERENCE.EXPERIMENT_RUNS
-                SELECT :CATCHUP, :e, "run_name", 'PARAM', "name", "value"::VARCHAR FROM TABLE(RESULT_SCAN(LAST_QUERY_ID()))
+                SELECT :CATCHUP, :e, "run_name", 'PARAM', "name", "value"::VARCHAR FROM TABLE(params)
                 WHERE "run_name" IN (SELECT RUN_NAME FROM BANKING_HOL.ML_REFERENCE.EXPERIMENT_RUNS WHERE EXPERIMENT = :e AND CATCHUP = :CATCHUP AND KIND = 'METRIC');
         END IF;
     END FOR;

@@ -1,5 +1,6 @@
 import { PageHeader } from "@/components/page-header"
 import { Tour } from "@/components/demo/tour"
+import { DemoGate } from "@/components/lab/setup-progress"
 
 export const dynamic = "force-dynamic"
 
@@ -12,7 +13,7 @@ export default async function DemoPage({ searchParams }: { searchParams: Promise
         title="Banking on one governed data platform"
         description="A click-through tour of what the lab builds, ready made: profitability and branch catchments on a map, customers about to leave, fraud rings, fuzzy name matching, case search and an assistant you can ask anything."
       />
-      <Tour initialTour={tour} initialStop={stop} />
+      <DemoGate><Tour initialTour={tour} initialStop={stop} /></DemoGate>
     </main>
   )
 }

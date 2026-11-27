@@ -4,6 +4,7 @@ import { AppHeader } from "@/components/app-header"
 import { ThemeProvider } from "@/components/theme-provider"
 import { QueryProvider } from "@/components/query-provider"
 import { SetupGate } from "@/components/lab/setup-gate"
+import { BackgroundBuildBanner } from "@/components/lab/setup-progress"
 import { APP_TITLE, LOGO_SRC } from "@/lib/constants"
 import "./globals.css"
 
@@ -31,6 +32,7 @@ export default function RootLayout({
         <ThemeProvider>
           <QueryProvider>
             <AppHeader />
+            <BackgroundBuildBanner />
             <SetupGate>{children}</SetupGate>
           </QueryProvider>
         </ThemeProvider>

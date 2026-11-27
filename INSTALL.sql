@@ -91,8 +91,9 @@ INSERT INTO BANKING_HOL.LAB.SETUP_CONFIG (KEY, VALUE) VALUES
 EXECUTE IMMEDIATE FROM @BANKING_HOL_SETUP.PUBLIC.HOL_REPO/branches/main/setup/14_workspace.sql;
 
 -- -----------------------------------------------------
--- 5. Load the lab data in the background (about 10 minutes), and build the Lab Companion alongside
---    it. Follow the load with: SELECT * FROM BANKING_HOL.LAB.SETUP_STATUS;
+-- 5. Load the lab data in the background (about 4 minutes), and build the Lab Companion alongside
+--    it. The executive demo and the DS1/DS4 reference models follow on their own, side by side
+--    (about 10 minutes more). Follow it with: SELECT * FROM BANKING_HOL.LAB.SETUP_STATUS;
 -- -----------------------------------------------------
 EXECUTE TASK BANKING_HOL.LAB.PROVISION_LAB;
 
@@ -138,4 +139,4 @@ SELECT CASE
            THEN 'Installed. Open the Lab Companion: ' || (SELECT MAX(VALUE) FROM BANKING_HOL.LAB.SETUP_CONFIG WHERE KEY = 'APP_URL')
          ELSE 'Installed without the Lab Companion (this account cannot run Snowflake App Runtime apps). Follow the lab guide in Projects > Streamlit > Banking HOL lab guide'
        END
-       || '. The lab data finishes loading in about 10 minutes (SELECT * FROM BANKING_HOL.LAB.SETUP_SUMMARY).' AS NEXT_STEP;
+       || '. The lab opens when its data has loaded (about 4 minutes); the executive demo and the DS1/DS4 reference models finish about 10 minutes later, and the app shows what is still building (SELECT * FROM BANKING_HOL.LAB.SETUP_SUMMARY).' AS NEXT_STEP;
