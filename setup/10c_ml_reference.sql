@@ -32,73 +32,48 @@ DROP MODEL IF EXISTS BANKING_HOL.ML_REFERENCE.RB_MARGIN_MODEL;
 
 -- Copy what the models and experiments hold right now into the reference, tagged with the catch-up
 -- that will hand it out. Versions and runs already in the reference are left alone.
+-- Python, not SQL Scripting: inside a task (PROVISION_MODELS) neither RESULT_SCAN(LAST_QUERY_ID()) nor
+-- the ->> pipe can find the SHOW they follow ("Statement ... not found"); .collect() reads it directly.
 CREATE OR REPLACE PROCEDURE BANKING_HOL.ML_REFERENCE.SNAPSHOT(CATCHUP VARCHAR)
 RETURNS VARCHAR
-LANGUAGE SQL
+LANGUAGE PYTHON
+RUNTIME_VERSION = '3.11'
+PACKAGES = ('snowflake-snowpark-python')
+HANDLER = 'run'
 EXECUTE AS CALLER
 AS
 $$
-DECLARE
-    models ARRAY DEFAULT ARRAY_CONSTRUCT('RB_ATTRITION_MODEL', 'RB_MARGIN_MODEL');
-    experiments ARRAY DEFAULT ARRAY_CONSTRUCT('RB_ATTRITION', 'RB_MARGIN');
-    m VARCHAR;
-    e VARCHAR;
-    v VARCHAR;
-    is_def BOOLEAN;
-    n INTEGER;
-    seq INTEGER;
-    copied INTEGER DEFAULT 0;
-BEGIN
-    -- each SHOW feeds its query with the ->> pipe, not RESULT_SCAN(LAST_QUERY_ID()): this runs nested
-    -- inside the loader's task, where LAST_QUERY_ID() doesn't point at the SHOW. The names in the
-    -- strings are this procedure's own constants and the catch-up name it was called with.
-    FOR i IN 0 TO ARRAY_SIZE(models) - 1 DO
-        m := GET(models, i)::VARCHAR;
-        LET found RESULTSET := (EXECUTE IMMEDIATE 'SHOW MODELS LIKE ''' || :m || ''' IN SCHEMA BANKING_HOL.ML ->> SELECT COUNT(*) AS N FROM $1');
-        LET fc CURSOR FOR found;
-        OPEN fc; FETCH fc INTO n; CLOSE fc;
-        IF (n > 0) THEN
-            LET rs RESULTSET := (EXECUTE IMMEDIATE 'SHOW VERSIONS IN MODEL BANKING_HOL.ML.' || :m
-                || ' ->> SELECT "name" AS V, "is_default_version" AS D FROM $1 ORDER BY "created_on"');
-            LET cur CURSOR FOR rs;
-            FOR r IN cur DO
-                v := r.V;
-                is_def := r.D;
-                SELECT COUNT(*) INTO :n FROM BANKING_HOL.ML_REFERENCE.MODEL_VERSIONS WHERE MODEL = :m AND VERSION = :v;
-                IF (n = 0) THEN
-                    SELECT COUNT(*) INTO :seq FROM BANKING_HOL.ML_REFERENCE.MODEL_VERSIONS WHERE MODEL = :m;
-                    IF (seq = 0) THEN
-                        EXECUTE IMMEDIATE 'CREATE MODEL BANKING_HOL.ML_REFERENCE.' || :m || ' WITH VERSION ' || :v
-                            || ' FROM MODEL BANKING_HOL.ML.' || :m || ' VERSION ' || :v;
-                    ELSE
-                        EXECUTE IMMEDIATE 'ALTER MODEL BANKING_HOL.ML_REFERENCE.' || :m || ' ADD VERSION ' || :v
-                            || ' FROM MODEL BANKING_HOL.ML.' || :m || ' VERSION ' || :v;
-                    END IF;
-                    INSERT INTO BANKING_HOL.ML_REFERENCE.MODEL_VERSIONS VALUES (:CATCHUP, :m, :v, :is_def, :seq + 1);
-                    copied := copied + 1;
-                END IF;
-            END FOR;
-        END IF;
-    END FOR;
-    FOR i IN 0 TO ARRAY_SIZE(experiments) - 1 DO
-        e := GET(experiments, i)::VARCHAR;
-        LET found_e RESULTSET := (EXECUTE IMMEDIATE 'SHOW EXPERIMENTS LIKE ''' || :e || ''' IN SCHEMA BANKING_HOL.ML ->> SELECT COUNT(*) AS N FROM $1');
-        LET ec CURSOR FOR found_e;
-        OPEN ec; FETCH ec INTO n; CLOSE ec;
-        IF (n > 0) THEN
-            EXECUTE IMMEDIATE 'SHOW RUN METRICS IN EXPERIMENT BANKING_HOL.ML.' || :e
-                || ' ->> INSERT INTO BANKING_HOL.ML_REFERENCE.EXPERIMENT_RUNS'
-                || ' SELECT ''' || :CATCHUP || ''', ''' || :e || ''', "run_name", ''METRIC'', "name", "value"::VARCHAR FROM $1'
-                || ' WHERE "run_name" NOT IN (SELECT RUN_NAME FROM BANKING_HOL.ML_REFERENCE.EXPERIMENT_RUNS WHERE EXPERIMENT = ''' || :e || ''')';
-            EXECUTE IMMEDIATE 'SHOW RUN PARAMETERS IN EXPERIMENT BANKING_HOL.ML.' || :e
-                || ' ->> INSERT INTO BANKING_HOL.ML_REFERENCE.EXPERIMENT_RUNS'
-                || ' SELECT ''' || :CATCHUP || ''', ''' || :e || ''', "run_name", ''PARAM'', "name", "value"::VARCHAR FROM $1'
-                || ' WHERE "run_name" IN (SELECT RUN_NAME FROM BANKING_HOL.ML_REFERENCE.EXPERIMENT_RUNS WHERE EXPERIMENT = ''' || :e
-                || ''' AND CATCHUP = ''' || :CATCHUP || ''' AND KIND = ''METRIC'')';
-        END IF;
-    END FOR;
-    RETURN copied || ' model versions copied for ' || :CATCHUP;
-END;
+def run(session, catchup):
+    ref = "BANKING_HOL.ML_REFERENCE"
+    copied = 0
+    for m in ("RB_ATTRITION_MODEL", "RB_MARGIN_MODEL"):
+        if not session.sql(f"SHOW MODELS LIKE '{m}' IN SCHEMA BANKING_HOL.ML").collect():
+            continue
+        versions = sorted(session.sql(f"SHOW VERSIONS IN MODEL BANKING_HOL.ML.{m}").collect(), key=lambda r: r["created_on"])
+        for r in versions:
+            v, is_def = r["name"], str(r["is_default_version"]).lower() == "true"
+            have = session.sql(f"SELECT COUNT(*) AS N FROM {ref}.MODEL_VERSIONS WHERE MODEL = ? AND VERSION = ?", params=[m, v]).collect()[0]["N"]
+            if have:
+                continue
+            seq = session.sql(f"SELECT COUNT(*) AS N FROM {ref}.MODEL_VERSIONS WHERE MODEL = ?", params=[m]).collect()[0]["N"]
+            if seq == 0:
+                session.sql(f"CREATE MODEL {ref}.{m} WITH VERSION {v} FROM MODEL BANKING_HOL.ML.{m} VERSION {v}").collect()
+            else:
+                session.sql(f"ALTER MODEL {ref}.{m} ADD VERSION {v} FROM MODEL BANKING_HOL.ML.{m} VERSION {v}").collect()
+            session.sql(f"INSERT INTO {ref}.MODEL_VERSIONS VALUES (?, ?, ?, ?, ?)", params=[catchup, m, v, is_def, seq + 1]).collect()
+            copied += 1
+    for e in ("RB_ATTRITION", "RB_MARGIN"):
+        if not session.sql(f"SHOW EXPERIMENTS LIKE '{e}' IN SCHEMA BANKING_HOL.ML").collect():
+            continue
+        known = {r["RUN_NAME"] for r in session.sql(f"SELECT DISTINCT RUN_NAME FROM {ref}.EXPERIMENT_RUNS WHERE EXPERIMENT = ?", params=[e]).collect()}
+        metrics = [r for r in session.sql(f"SHOW RUN METRICS IN EXPERIMENT BANKING_HOL.ML.{e}").collect() if r["run_name"] not in known]
+        new_runs = {r["run_name"] for r in metrics}
+        params = [r for r in session.sql(f"SHOW RUN PARAMETERS IN EXPERIMENT BANKING_HOL.ML.{e}").collect() if r["run_name"] in new_runs]
+        for kind, rows in (("METRIC", metrics), ("PARAM", params)):
+            for r in rows:
+                session.sql(f"INSERT INTO {ref}.EXPERIMENT_RUNS VALUES (?, ?, ?, ?, ?, ?)",
+                            params=[catchup, e, r["run_name"], kind, r["name"], str(r["value"])]).collect()
+    return f"{copied} model versions copied for {catchup}"
 $$;
 
 -- start from nothing in ML so the snapshots hold exactly what each module adds
