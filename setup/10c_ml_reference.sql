@@ -49,15 +49,17 @@ DECLARE
     seq INTEGER;
     copied INTEGER DEFAULT 0;
 BEGIN
-    -- each SHOW is read through its own RESULTSET, not RESULT_SCAN(LAST_QUERY_ID()): this runs nested
-    -- inside the loader's task, where LAST_QUERY_ID() doesn't point at the SHOW
+    -- each SHOW feeds its query with the ->> pipe, not RESULT_SCAN(LAST_QUERY_ID()): this runs nested
+    -- inside the loader's task, where LAST_QUERY_ID() doesn't point at the SHOW. The names in the
+    -- strings are this procedure's own constants and the catch-up name it was called with.
     FOR i IN 0 TO ARRAY_SIZE(models) - 1 DO
         m := GET(models, i)::VARCHAR;
-        LET found RESULTSET := (EXECUTE IMMEDIATE 'SHOW MODELS LIKE ''' || :m || ''' IN SCHEMA BANKING_HOL.ML');
-        SELECT COUNT(*) INTO :n FROM TABLE(found);
+        LET found RESULTSET := (EXECUTE IMMEDIATE 'SHOW MODELS LIKE ''' || :m || ''' IN SCHEMA BANKING_HOL.ML ->> SELECT COUNT(*) AS N FROM $1');
+        LET fc CURSOR FOR found;
+        OPEN fc; FETCH fc INTO n; CLOSE fc;
         IF (n > 0) THEN
-            LET vers RESULTSET := (EXECUTE IMMEDIATE 'SHOW VERSIONS IN MODEL BANKING_HOL.ML.' || :m);
-            LET rs RESULTSET := (SELECT "name" AS V, "is_default_version" AS D FROM TABLE(vers) ORDER BY "created_on");
+            LET rs RESULTSET := (EXECUTE IMMEDIATE 'SHOW VERSIONS IN MODEL BANKING_HOL.ML.' || :m
+                || ' ->> SELECT "name" AS V, "is_default_version" AS D FROM $1 ORDER BY "created_on"');
             LET cur CURSOR FOR rs;
             FOR r IN cur DO
                 v := r.V;
@@ -80,17 +82,19 @@ BEGIN
     END FOR;
     FOR i IN 0 TO ARRAY_SIZE(experiments) - 1 DO
         e := GET(experiments, i)::VARCHAR;
-        LET exps RESULTSET := (EXECUTE IMMEDIATE 'SHOW EXPERIMENTS LIKE ''' || :e || ''' IN SCHEMA BANKING_HOL.ML');
-        SELECT COUNT(*) INTO :n FROM TABLE(exps);
+        LET found_e RESULTSET := (EXECUTE IMMEDIATE 'SHOW EXPERIMENTS LIKE ''' || :e || ''' IN SCHEMA BANKING_HOL.ML ->> SELECT COUNT(*) AS N FROM $1');
+        LET ec CURSOR FOR found_e;
+        OPEN ec; FETCH ec INTO n; CLOSE ec;
         IF (n > 0) THEN
-            LET metrics RESULTSET := (EXECUTE IMMEDIATE 'SHOW RUN METRICS IN EXPERIMENT BANKING_HOL.ML.' || :e);
-            INSERT INTO BANKING_HOL.ML_REFERENCE.EXPERIMENT_RUNS
-                SELECT :CATCHUP, :e, "run_name", 'METRIC', "name", "value"::VARCHAR FROM TABLE(metrics)
-                WHERE "run_name" NOT IN (SELECT RUN_NAME FROM BANKING_HOL.ML_REFERENCE.EXPERIMENT_RUNS WHERE EXPERIMENT = :e);
-            LET params RESULTSET := (EXECUTE IMMEDIATE 'SHOW RUN PARAMETERS IN EXPERIMENT BANKING_HOL.ML.' || :e);
-            INSERT INTO BANKING_HOL.ML_REFERENCE.EXPERIMENT_RUNS
-                SELECT :CATCHUP, :e, "run_name", 'PARAM', "name", "value"::VARCHAR FROM TABLE(params)
-                WHERE "run_name" IN (SELECT RUN_NAME FROM BANKING_HOL.ML_REFERENCE.EXPERIMENT_RUNS WHERE EXPERIMENT = :e AND CATCHUP = :CATCHUP AND KIND = 'METRIC');
+            EXECUTE IMMEDIATE 'SHOW RUN METRICS IN EXPERIMENT BANKING_HOL.ML.' || :e
+                || ' ->> INSERT INTO BANKING_HOL.ML_REFERENCE.EXPERIMENT_RUNS'
+                || ' SELECT ''' || :CATCHUP || ''', ''' || :e || ''', "run_name", ''METRIC'', "name", "value"::VARCHAR FROM $1'
+                || ' WHERE "run_name" NOT IN (SELECT RUN_NAME FROM BANKING_HOL.ML_REFERENCE.EXPERIMENT_RUNS WHERE EXPERIMENT = ''' || :e || ''')';
+            EXECUTE IMMEDIATE 'SHOW RUN PARAMETERS IN EXPERIMENT BANKING_HOL.ML.' || :e
+                || ' ->> INSERT INTO BANKING_HOL.ML_REFERENCE.EXPERIMENT_RUNS'
+                || ' SELECT ''' || :CATCHUP || ''', ''' || :e || ''', "run_name", ''PARAM'', "name", "value"::VARCHAR FROM $1'
+                || ' WHERE "run_name" IN (SELECT RUN_NAME FROM BANKING_HOL.ML_REFERENCE.EXPERIMENT_RUNS WHERE EXPERIMENT = ''' || :e
+                || ''' AND CATCHUP = ''' || :CATCHUP || ''' AND KIND = ''METRIC'')';
         END IF;
     END FOR;
     RETURN copied || ' model versions copied for ' || :CATCHUP;
