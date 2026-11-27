@@ -18,6 +18,9 @@ Creates a DataOps.live event that provisions attendee accounts with the full lab
 - There is **no Open Instructions box**, because the project has no Build Homepage job. Don't add that job back.
 - A brand-new account takes about **20-25 minutes** to reach `ready`: about 6 creating the account, then Configure, where the first app build waits about 8 minutes for Snowflake's build compute. A rerun takes about 5 minutes.
 - **Adding accounts:** `PATCH .../event_management/<slug>` with `{"pool_size": n}`. Decommissioned accounts still count towards the pool, so add the number you want to the current pool size.
+- **Attendee login (`USER`):** DataOps creates it once with the fixed password `EVENT_USER_PASSWORD` (`sn0wf@ll`, in the DataOps project's `dataops/event/variables.yml`). It uses `CREATE USER IF NOT EXISTS`, so reruns never reset it. The instructions page shows that value.
+  - **MFA:** the account policy `POLICY_DB.POLICIES.EVENT_AUTHENTICATION_POLICY` has `MFA_ENROLLMENT = REQUIRED_PASSWORD_ONLY`, so a password sign-in must enrol in MFA. If a sign-in "fails" with the right password, check `SNOWFLAKE.ACCOUNT_USAGE.LOGIN_HISTORY` for `USER`: `SECOND_FACTOR_AUTHENTICATION_REQUIRED` means MFA, not the password.
+  - **Never set a one-time password (`MUST_CHANGE_PASSWORD = TRUE`) on `USER`.** The new password chosen at the prompt replaces `sn0wf@ll`, and the instructions page is then wrong. `sn0wf@ll` can't be set back either: the default password policy needs at least 14 characters for a new password. For a lost `USER` login, set a random password of 14 or more characters with `MUST_CHANGE_PASSWORD = FALSE`, store it in the keychain (`security add-generic-password -U -s hol-<account>-user -a USER -w`), and tell the user the instructions page is out of date for that account. Use a separate test user for first-sign-in testing.
 
 ## Prerequisites
 

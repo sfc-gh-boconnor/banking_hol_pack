@@ -121,7 +121,7 @@ GRANT ROLE HOL_PARTICIPANT TO USER <USERNAME>;
 
 Then ask the user to set a one-time password themselves:
 1. **Admin > Users & roles**, then select `<USERNAME>`.
-2. **Edit** (or the **...** menu > **Edit**), and enter a password.
+2. **Edit** (or the **...** menu > **Edit**), and enter a password of at least 14 characters (shorter ones are rejected).
 3. Turn on **Force user to change password on first sign-in**, then **Save**.
 4. Share the password with the attendee outside the chat.
 

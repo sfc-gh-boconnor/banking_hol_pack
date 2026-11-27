@@ -10,6 +10,7 @@
   <li>You'll use <b>two windows</b>: the <b>Lab Companion</b> (your guide) and <b>Snowflake</b> (where you build).</li>
   <li>Each button below opens in its own tab. Drag one into a new window so you can see both side by side.</li>
   <li>The same login works for both.</li>
+  <li>The first time you sign in to Snowflake, you'll be asked to <b>choose a new password</b>. Keep it: the password below only works once.</li>
 </ul>
 
 ## Your login

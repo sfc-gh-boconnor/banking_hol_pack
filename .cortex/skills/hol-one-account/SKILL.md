@@ -141,8 +141,9 @@ GRANT ROLE HOL_PARTICIPANT TO USER <USERNAME>;
 ```
 
 Stopping points:
-- Generate the one-time password yourself, and do not paste it into the chat or commit it.
+- Generate the one-time password yourself, and do not paste it into the chat or commit it. Make it at least 14 characters: Snowflake's default password policy rejects shorter ones.
 - Share it out of band. The user changes it on first sign-in, which is the attendee path.
+- Never do this to an event's `USER` login: the change replaces the password on the event's instructions page, and the old one can't be set back. Create a separate test user.
 - Do not grant `HOL_ADMIN`. That account would not behave like an attendee.
 
 ### 6. Verify as the attendee
